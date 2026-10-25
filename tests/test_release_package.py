@@ -25,12 +25,14 @@ class ReleaseBuildTests(unittest.TestCase):
                 for name in ('smart_board_dimension/__init__.py',
                              'smart_board_dimension/geometry.py',
                              'smart_board_dimension/updater.py',
+                             'smart_board_dimension/canvas.py',
+                             'smart_board_dimension/direct_editor.py',
                              'update_manifest.json',
                              'scripts/installer.ps1', 'Windows_更新.bat',
                              'Windows_前の版に戻す.bat', 'README.md'):
                     self.assertIn(name, names)
                 self.assertIsNone(archive.testzip())
-                self.assertIn(b"PLUGIN_VERSION = '1.2.0'",
+                self.assertIn(b"PLUGIN_VERSION = '1.3.0'",
                               archive.read('smart_board_dimension/__init__.py'))
 
     def test_powershell_script_is_utf8_bom(self):

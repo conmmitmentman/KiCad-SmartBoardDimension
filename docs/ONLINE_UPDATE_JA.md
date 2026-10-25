@@ -2,15 +2,15 @@
 
 ## 対応バージョンと現在の状況
 
-**スマート基板寸法 v1.2.0 以降**に、KiCad内から更新を確認して適用するボタンがあります。既存の v1.1.0 以前の環境にはボタンがないため、**一度だけ v1.2.0 の ZIP を手動導入**してください。
+**スマート基板寸法 v1.2.0 以降**に、KiCad内から更新を確認して適用するボタンがあります。既存の v1.1.0 以前の環境にはボタンがないため、**v1.3.0 の ZIP を手動導入**してください。
 
-> このソースはPythonテストで検証していますが、KiCad 10のGUI実機・Windows実機での動作試験は未実施です。重要な設計を開く前に、テスト用基板でご確認ください。
+> 寸法編集の検証範囲は[実機検証記録](VALIDATION_JA.md)を参照してください。正式ReleaseとZIPが公開されると、既定の更新先から取得できます。
 
 ## 利用者：更新する方法
 
 1. KiCad 10のPCBエディタを開き、**ツール → 外部プラグイン → スマート基板寸法（幅・高さ）** を起動します。
 2. ダイアログ下部の **「GitHubから更新」** を押します。
-3. 初回のみ、公開者のGitHubリポジトリURLを入力します（例 `https://github.com/OWNER/REPOSITORY`）。入力内容は次回以降保存されます。
+3. 既定の更新先は `conmmitmentman/KiCad-SmartBoardDimension` です。変更する場合だけ「更新元の設定」を使います。
 4. 新バージョンが見つかったら、確認画面の「はい」をクリックします。
 5. GitHubからZIPをダウンロードし、チェックサム・ファイル構成の検査と更新前バックアップを行います。
 6. 更新完了メッセージが表示されたら、**編集中のPCBを保存してKiCad PCBエディタを終了し、もう一度起動**します。
@@ -31,10 +31,10 @@
 
 ## 更新元リポジトリを公開する方
 
-GitHubのユーザー名・リポジトリ名を把握したら、次のどちらかで設定します。
+この配布版では `DEFAULT_REPOSITORY` を設定済みです。派生版を配布する場合は、次の方法で変更します。
 
-- **方法A：** `smart_board_dimension/updater.py` の `DEFAULT_REPOSITORY = ''` を `DEFAULT_REPOSITORY = 'OWNER/REPOSITORY'` に変更してからGitHubにコミット・Releaseを作成します。これで利用者は初回のURL登録なしで更新確認できます。
-- **方法B：** `DEFAULT_REPOSITORY = ''` を維持します。利用者が初回更新時にURLを登録します。リポジトリ名が未確定ならこちらを使用します。
+- **方法A：** `smart_board_dimension/updater.py` の `DEFAULT_REPOSITORY` を `DEFAULT_REPOSITORY = 'OWNER/REPOSITORY'` に変更してからGitHubにコミット・Releaseを作成します。これで利用者は初回のURL登録なしで更新確認できます。
+- **方法B：** `DEFAULT_REPOSITORY = ''` に変更します。利用者が初回更新時にURLを登録します。リポジトリ名が未確定ならこちらを使用します。
 
 **ユーザーが登録した更新元（settings.json）を優先**し、`DEFAULT_REPOSITORY` は初期値としてのみ機能します。
 
@@ -48,7 +48,7 @@ GitHubのユーザー名・リポジトリ名を把握したら、次のどち�
    - `dist/KiCad10_SmartBoardDimension_vX.Y.Z_Windows.zip.sha256`
 
 4. 対応する `vX.Y.Z` タグでGitHub Releaseを作り、上記2ファイルをアセットに登録して**公開**します（Draftのままでは更新先になりません）。
-5. 自動更新から正常に取得できることを、別PCやテスト環境で確認します。タグをpushするとGitHub ActionsでドラフトReleaseを作る構成です。公開は手動操作が必要です。
+5. 自動更新から正常に取得できることを、別PCやテスト環境で確認します。mainへの反映時に公開ワークフローがテストと配布物検証を行い、未公開のバージョンをReleaseにします。公開済みの同じバージョンを上書きしません。
 
 GitHub REST API `GET /repos/{owner}/{repo}/releases/latest` を利用するため、**リポジトリにタグだけを追加しても更新できません**。**公開済みの正式Release**と、命名規則に合ったZIPアセットが必要です。
 

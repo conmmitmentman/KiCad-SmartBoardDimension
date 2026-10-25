@@ -18,6 +18,8 @@
 
 ### Windows：手動インストール
 
+「ドキュメント」へ書き込めない場合は `%APPDATA%\kicad\10.0\scripting\plugins` に配置できます。v1.2.1のインストーラーは新規導入時に書き込みを確認し、この代替先へ切り替えます。既存版がある場合は元の場所を更新します。複数箇所へ重複配置しないでください。終了時の「対象:」のパスを控えてください。
+
 1. ZIPを展開して `smart_board_dimension` フォルダを見つけます。
 2. Windows エクスプローラーのアドレスバーへ `%USERPROFILE%\Documents\KiCad\10.0\scripting\plugins` を貼り付けます。
 3. その中へ `smart_board_dimension` フォルダを**丸ごと**コピーします。
@@ -56,6 +58,6 @@ WindowsやKiCadの通常の再起動では不要です。ファイルを手動�
 
 ### アンインストール
 
-KiCadを終了し、`scripting/plugins/smart_board_dimension` フォルダだけを削除します。更新時のバックアップは `%LOCALAPPDATA%\SmartBoardDimension\backups` に保存されます。不要であることを確認してから手動削除してください（他のプラグインフォルダは削除しない）。
+KiCadを終了し、実際の導入先の `scripting/plugins/smart_board_dimension` フォルダだけを削除します。代替先を使用した場合は `%APPDATA%\kicad\10.0\scripting\plugins\smart_board_dimension` です。更新バックアップは `%LOCALAPPDATA%\SmartBoardDimension\backups`、更新元設定は同じ親フォルダーの `settings.json` です。不要な場合だけ削除してください（他のプラグインや修正版ソースを削除しないでください）。
 
 [READMEへ戻る](../README.md)

@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.verification/
+このPCの導入結果.txt
+*-release-notes.tmp.md
+release-notes.tmp.md

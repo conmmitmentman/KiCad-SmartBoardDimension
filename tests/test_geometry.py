@@ -5,10 +5,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'smart_board_dimension'))
 from geometry import (Bounds, DimensionError, detect_four_line_rectangle,
-                      fmt_iu, mm_to_iu, map_corner, parse_mm, place_rectangle)
+                      fmt_iu, mm_to_iu, map_corner, parse_mm, place_rectangle,
+                      validate_bounds)
 
 
 class TestSmartDimensions(unittest.TestCase):
+    def test_coordinate_overflow_rejected_for_every_anchor(self):
+        for kind, x in ((0, 1990), (1, 1990), (2, -1990)):
+            b = place_rectangle(mm_to_iu(x), 0, mm_to_iu(60), mm_to_iu(45), kind)
+            with self.subTest(kind=kind), self.assertRaises(DimensionError):
+                validate_bounds(b)
+        validate_bounds(Bounds(0, 0, mm_to_iu(60), mm_to_iu(45)))
+        with self.assertRaises(DimensionError):
+            validate_bounds(Bounds(-mm_to_iu(1500), 0, mm_to_iu(1500), 1))
+
     def test_expressions(self):
         self.assertEqual(parse_mm('2 * 15 + 5'), 35)
         self.assertEqual(parse_mm('1in + 5mm'), parse_mm('30.4'))

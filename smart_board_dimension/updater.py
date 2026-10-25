@@ -18,7 +18,7 @@ import ast
 
 # 公開者は GitHub アップロード前に 'OWNER/REPOSITORY' を設定できます。
 # 未設定の場合、利用者が最初の1回だけ画面から登録します。
-DEFAULT_REPOSITORY = ''
+DEFAULT_REPOSITORY = 'conmmitmentman/KiCad-SmartBoardDimension'
 MAX_ASSET_BYTES = 12 * 1024 * 1024
 MAX_SOURCE_BYTES = 2 * 1024 * 1024
 MAX_JSON_BYTES = 1024 * 1024
@@ -55,7 +55,11 @@ def get_repository() -> str:
     settings_path = app_directory() / 'settings.json'
     try:
         if settings_path.is_file():
-            settings = json.loads(settings_path.read_text(encoding='utf-8'))
+            settings = json.loads(settings_path.read_text(encoding='utf-8-sig'))
+            if not isinstance(settings, dict):
+                raise ValueError('設定はJSONオブジェクトである必要があります。')
+            if settings.get('repository') and not isinstance(settings['repository'], str):
+                raise ValueError('repositoryは文字列である必要があります。')
             if settings.get('repository'):
                 return parse_repository(settings['repository'])
     except (OSError, ValueError, TypeError) as exc:
@@ -95,6 +99,13 @@ def _get_url(url: str, maximum: int, *, accept: str) -> bytes:
                     'objects.githubusercontent.com'):
                 raise UpdateError('GitHub以外のダウンロード先に転送されたため中断しました。')
             content = response.read(maximum + 1)
+    except error.HTTPError as exc:
+        if exc.code == 404:
+            raise UpdateError('公開済みの正式Releaseまたは配布ファイルが見つかりません (HTTP 404)。\n'
+                              '更新元URLとGitHub Releasesの公開状況を確認してください。\n'
+                              'ソースやZIPをリポジトリに置くだけでは自動更新できません。\n'
+                              '現在のプラグインはそのまま使用できます。') from exc
+        raise UpdateError(f'GitHubの応答エラー (HTTP {exc.code})。接続・API利用制限を確認してください。') from exc
     except (error.URLError, TimeoutError, OSError) as exc:
         raise UpdateError(f'GitHubへ接続できません: {exc}') from exc
     if len(content) > maximum:

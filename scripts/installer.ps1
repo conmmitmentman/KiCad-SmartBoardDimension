@@ -14,12 +14,27 @@ $ErrorActionPreference = 'Stop'
 $pluginName = 'smart_board_dimension'
 $sourceRoot = Split-Path -Parent $PSScriptRoot
 $source = Join-Path $sourceRoot $pluginName
-$files = @('__init__.py', 'geometry.py', 'updater.py')
+$files = @('__init__.py', 'geometry.py', 'updater.py', 'canvas.py', 'direct_editor.py')
 $required = @('__init__.py', 'geometry.py')
 $backupRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'SmartBoardDimension\backups'
 
 function Exists-Plugin([string]$candidate) {
     return (Test-Path -LiteralPath (Join-Path $candidate '__init__.py') -PathType Leaf)
+}
+
+function Test-WritableTarget([string]$candidate) {
+    $stream = $null
+    try {
+        [System.IO.Directory]::CreateDirectory($candidate) | Out-Null
+        $probe = Join-Path $candidate ('.write-test-' + [guid]::NewGuid().ToString('N'))
+        $stream = [System.IO.FileStream]::new($probe, [System.IO.FileMode]::CreateNew,
+            [System.IO.FileAccess]::Write, [System.IO.FileShare]::None, 1,
+            [System.IO.FileOptions]::DeleteOnClose)
+        $stream.WriteByte(0)
+        return $true
+    }
+    catch { return $false }
+    finally { if ($null -ne $stream) { $stream.Dispose() } }
 }
 
 function Get-InstallTarget() {
@@ -49,8 +64,11 @@ function Get-InstallTarget() {
     if ($Mode -ne 'Install') {
         throw '既存のプラグインが見つかりません。先にインストールするか、-Destination で配置先を指定してください。'
     }
-    if (-not $docs) { throw 'Windowsの「ドキュメント」フォルダが見つかりません。' }
-    return (Join-Path $docs 'KiCad\10.0\scripting\plugins\smart_board_dimension')
+    foreach ($candidate in $candidates) {
+        if (Test-WritableTarget $candidate) { return $candidate }
+        Write-Warning "書き込みできない配置先をスキップ: $candidate"
+    }
+    throw 'KiCadのユーザー用プラグインフォルダへ書き込めません。-Destination で書き込み可能な探索先を指定してください。'
 }
 
 function Read-Version([string]$folder) {

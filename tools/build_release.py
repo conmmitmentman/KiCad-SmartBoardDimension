@@ -21,11 +21,15 @@ RELEASE_FILES = (
     'smart_board_dimension/__init__.py',
     'smart_board_dimension/geometry.py',
     'smart_board_dimension/updater.py',
+    'smart_board_dimension/canvas.py',
+    'smart_board_dimension/direct_editor.py',
     'docs/INSTALL_JA.md',
     'docs/UPDATE_JA.md',
     'docs/ONLINE_UPDATE_JA.md',
     'docs/USAGE_JA.md',
     'docs/TROUBLESHOOTING_JA.md',
+    'docs/VALIDATION_JA.md',
+    'docs/images/dimension-editor.png',
 )
 
 

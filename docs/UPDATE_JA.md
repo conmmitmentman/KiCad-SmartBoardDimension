@@ -2,7 +2,7 @@
 
 ## このプロジェクトの「更新パッチ」とは
 
-毎回アンインストールする必要はありません。**v1.2.0以降ではKiCad画面内の「GitHubから更新」ボタンを推奨**します。初回だけ更新元リポジトリの設定が必要です。詳細は [GitHubからの更新ガイド](ONLINE_UPDATE_JA.md) を参照してください。
+毎回アンインストールする必要はありません。正式Releaseが公開されればKiCadの「GitHubから更新」を使えます。ZIPからのオフライン更新も利用できます。詳細は [GitHubからの更新ガイド](ONLINE_UPDATE_JA.md) を参照してください。
 
 このページでは、ダウンロード済みのZIPから `.py` ファイルを入れ替える**オフライン更新・旧版復元**を説明します。
 
@@ -29,7 +29,7 @@
 
 - 対象：ユーザーの `KiCad/10.0/scripting/plugins/smart_board_dimension`
 - **バックアップ：`%LOCALAPPDATA%\SmartBoardDimension\backups\日時-識別子\`**
-- バックアップするもの：更新前に存在した `__init__.py`、`geometry.py`、`updater.py`（旧版にないファイルは省略）、バックアップメタデータ
+- バックアップするもの：更新前に存在した `__init__.py`、`geometry.py`、`updater.py`、`canvas.py`、`direct_editor.py`（旧版にないファイルは省略）、バックアップメタデータ
 - 変更しないもの：`.kicad_pcb`、フットプリント、ネットリスト、配線、個人設定等
 
 更新前の KiCad 基板データは**別途ユーザーがバックアップ**してください。これはプラグインコードの復元機構であり、編集後のPCBデータを元へ戻す仕組みではありません。
@@ -56,6 +56,6 @@
 6. `dist/KiCad10_SmartBoardDimension_vX.Y.Z_Windows.zip` をGitHub Releasesへ添付します。
 7. 新版の更新バッチで **v1.0.0からの更新 → 動作 → ロールバック** をWindows/KiCad実機で検証してください。
 
-**注意**：将来ファイル構成が3ファイルより増える場合、`scripts/installer.ps1` の `$files` と `tools/build_release.py` の `RELEASE_FILES` を更新してください。現時点のオフライン更新は上記3ファイルを扱います。
+**注意**：将来ファイル構成が5ファイルより増える場合、`scripts/installer.ps1` の `$files` と `tools/build_release.py` の `RELEASE_FILES` を更新してください。現時点のオフライン更新は上記5ファイルを扱います。
 
 [READMEへ戻る](../README.md)

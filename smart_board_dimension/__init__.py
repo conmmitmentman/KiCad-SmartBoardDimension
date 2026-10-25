@@ -8,12 +8,15 @@ import pcbnew
 import wx
 
 from .geometry import (Bounds, DimensionError, detect_four_line_rectangle,
-                       fmt_iu, map_corner, mm_to_iu, parse_mm, place_rectangle)
+                       fmt_iu, map_corner, mm_to_iu, parse_mm, place_rectangle,
+                       validate_bounds)
 from .updater import (UpdateError, get_repository, save_repository,
                       check_latest, perform_update)
+from .canvas import DimensionCanvas
 
 
-PLUGIN_VERSION = '1.2.0'
+PLUGIN_VERSION = '1.3.0'
+_direct_session = None
 
 
 def _point(v):
@@ -68,6 +71,8 @@ class SmartDimensionDialog(wx.Dialog):
         super().__init__(None, title=f'スマート基板寸法 v{PLUGIN_VERSION}  |  KiCad 10',
                          style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.bounds = bounds
+        self.pending = bounds
+        self.anchor_kind = 0
         self.result = None
         self._updating = False
         root = wx.BoxSizer(wx.VERTICAL)
@@ -81,36 +86,50 @@ class SmartDimensionDialog(wx.Dialog):
         font.SetWeight(wx.FONTWEIGHT_BOLD)
         heading.SetFont(font)
         main.Add(heading, 0, wx.ALL, 12)
-        main.Add(wx.StaticText(body, label='基板外形（Edge.Cuts）・単位 mm'), 0,
+        main.Add(wx.StaticText(body, label='図の寸法を入力、または □ をドラッグしてサイズを変更'), 0,
                  wx.LEFT | wx.BOTTOM, 12)
 
+        workspace = wx.BoxSizer(wx.HORIZONTAL)
+        self.canvas = DimensionCanvas(body, bounds, self._select_anchor, self._drag_dimension)
+        self.w, self.h = self.canvas.width_edit, self.canvas.height_edit
+        workspace.Add(self.canvas, 1, wx.EXPAND | wx.RIGHT, 16)
+        settings = wx.Panel(body)
+        settings.SetMinSize((330, -1))
+        side = wx.BoxSizer(wx.VERTICAL)
+        side.Add(wx.StaticText(settings, label='固定する位置'), 0, wx.BOTTOM, 8)
+        self.anchor = wx.Choice(settings, choices=list(self.LABELS))
+        self.anchor.SetSelection(0)
+        side.Add(self.anchor, 0, wx.EXPAND | wx.BOTTOM, 12)
         form = wx.FlexGridSizer(0, 2, 9, 12)
         form.AddGrowableCol(1, 1)
 
         def add_row(title, default):
-            form.Add(wx.StaticText(body, label=title), 0, wx.ALIGN_CENTER_VERTICAL)
-            control = wx.TextCtrl(body, value=default, size=(220, -1))
+            form.Add(wx.StaticText(settings, label=title), 0, wx.ALIGN_CENTER_VERTICAL)
+            control = wx.TextCtrl(settings, value=default, size=(115, -1))
             form.Add(control, 1, wx.EXPAND)
             return control
 
-        self.w = add_row('横幅 W (mm)', fmt_iu(bounds.width))
-        self.h = add_row('縦幅 H (mm)', fmt_iu(bounds.height))
-        form.Add(wx.StaticText(body, label='寸法変更の基準'), 0, wx.ALIGN_CENTER_VERTICAL)
-        self.anchor = wx.Choice(body, choices=list(self.LABELS))
-        self.anchor.SetSelection(0)
-        form.Add(self.anchor, 1, wx.EXPAND)
-        self.x = add_row('基準点 X (mm)', fmt_iu(bounds.left))
-        self.y = add_row('基準点 Y (mm)', fmt_iu(bounds.top))
-        main.Add(form, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 16)
-        main.Add(wx.StaticText(body, label='数式も入力可能： 20+5  /  2*15  /  1in+5mm'),
-                 0, wx.ALL, 15)
+        self.x = add_row('X (mm)', fmt_iu(bounds.left))
+        self.y = add_row('Y (mm)', fmt_iu(bounds.top))
+        side.Add(form, 0, wx.EXPAND | wx.BOTTOM, 16)
+        side.Add(wx.StaticText(settings, label='数式・単位も入力できます\n20+5  /  2*35  /  1in+5mm\n\nTab：次の欄へ\nドラッグ中の Esc：変更を戻す'),
+                 0, wx.BOTTOM, 16)
 
-        line = wx.StaticBoxSizer(wx.VERTICAL, body, '変更プレビュー（数値）')
-        self.preview = wx.StaticText(body, label='', style=wx.ST_NO_AUTORESIZE)
+        line = wx.StaticBoxSizer(wx.VERTICAL, settings, '変更後の寸法と位置')
+        self.preview = wx.StaticText(line.GetStaticBox(), label='外形サイズ：\n左上：\n右下：')
         line.Add(self.preview, 0, wx.EXPAND | wx.ALL, 10)
-        main.Add(line, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 14)
+        side.Add(line, 0, wx.EXPAND | wx.BOTTOM, 12)
+        self.reset_button = wx.Button(settings, label='最初の寸法に戻す')
+        self.reset_button.Bind(wx.EVT_BUTTON, self._reset)
+        side.Add(self.reset_button, 0, wx.EXPAND)
+        settings.SetSizer(side)
+        workspace.Add(settings, 0, wx.EXPAND)
+        main.Add(workspace, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        self.error = wx.StaticText(body, label='')
+        self.error.SetForegroundColour(wx.Colour('#B3261E'))
+        self.error.SetMinSize((-1, self.GetCharHeight()*2+8))
+        main.Add(self.error, 0, wx.EXPAND | wx.ALL, 12)
         safety = wx.StaticText(body, label='※ 部品・配線・ゾーンは移動しません。変更後はDRC確認を推奨。')
-        safety.Wrap(460)
         main.Add(safety, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 14)
 
         body.SetSizer(main)
@@ -123,23 +142,29 @@ class SmartDimensionDialog(wx.Dialog):
         actions.Add(self.source_button, 0, wx.RIGHT, 6)
         actions.AddStretchSpacer(1)
         actions.Add(self.CreateButtonSizer(wx.OK | wx.CANCEL), 0)
+        self.FindWindowById(wx.ID_OK).SetLabel('基板に反映')
         root.Add(actions, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 12)
         self.update_status = wx.StaticText(self, label='オンライン更新はボタンを押したときだけ確認します。')
         root.Add(self.update_status, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.TOP, 12)
-        self.SetSizerAndFit(root)
-        self.SetMinSize((550, 450))
-        self.SetSize((600, 470))
-        self.CentreOnScreen()
+        self.SetSizer(root)
 
         self.anchor.Bind(wx.EVT_CHOICE, self._on_anchor)
         for ctrl in (self.w, self.h, self.x, self.y):
             ctrl.Bind(wx.EVT_TEXT, self._update_preview)
+        self.w.Bind(wx.EVT_TEXT_ENTER, lambda _evt: self.h.SetFocus())
+        self.h.Bind(wx.EVT_TEXT_ENTER, lambda _evt: self.FindWindowById(wx.ID_OK).SetFocus())
         self.Bind(wx.EVT_BUTTON, self._ok, id=wx.ID_OK)
         self.Bind(wx.EVT_BUTTON, self._cancel, id=wx.ID_CANCEL)
         self.Bind(wx.EVT_CLOSE, self._on_close)
         self.update_button.Bind(wx.EVT_BUTTON, self._check_updates)
         self.source_button.Bind(wx.EVT_BUTTON, self._configure_repository)
         self._update_preview()
+        # Font/DPI dependent best size must include the three-line preview.
+        # A fixed pixel height clips the panel on Windows display scaling.
+        self.Fit()
+        self.SetMinSize(self.GetSize())
+        self.CentreOnScreen()
+        self.w.SetFocus()
 
     def _cancel(self, _evt):
         if not self._updating:
@@ -160,6 +185,8 @@ class SmartDimensionDialog(wx.Dialog):
             if button:
                 button.Enable(not state)
         self.update_status.SetLabel(status)
+        if not state:
+            self._update_preview()
         self.Layout()
 
     def _configure_repository(self, _evt=None):
@@ -247,31 +274,71 @@ class SmartDimensionDialog(wx.Dialog):
         self.EndModal(wx.ID_CANCEL)
 
     def _on_anchor(self, _evt):
-        x, y = self.bounds.anchor(self.anchor.GetSelection())
+        self._select_anchor(self.anchor.GetSelection())
+
+    def _select_anchor(self, kind):
+        # Changing the fixed point must not undo the size/position already previewed.
+        try:
+            current = self._read(anchor=self.anchor_kind)
+        except (DimensionError, ValueError):
+            self.anchor.SetSelection(self.anchor_kind)
+            return
+        self.anchor_kind = kind
+        self.anchor.SetSelection(kind)
+        x, y = current.anchor(kind)
         self.x.ChangeValue(fmt_iu(x))
         self.y.ChangeValue(fmt_iu(y))
         self._update_preview()
 
-    def _read(self):
+    def _reset(self, _evt=None):
+        self.canvas.finish_drag(cancel=True)
+        self.w.ChangeValue(fmt_iu(self.bounds.width))
+        self.h.ChangeValue(fmt_iu(self.bounds.height))
+        x, y = self.bounds.anchor(self.anchor_kind)
+        self.x.ChangeValue(fmt_iu(x))
+        self.y.ChangeValue(fmt_iu(y))
+        self._update_preview()
+
+    def _drag_dimension(self, axis, value):
+        if axis is not None:
+            control = (self.w, self.h)[axis]
+            previous = control.GetValue()
+            control.ChangeValue(fmt_iu(value))
+            try:
+                self._read()
+            except (DimensionError, ValueError):
+                control.ChangeValue(previous)
+        self._update_preview()
+
+    def _read(self, anchor=None):
         w, h = parse_mm(self.w.GetValue()), parse_mm(self.h.GetValue())
         x, y = parse_mm(self.x.GetValue()), parse_mm(self.y.GetValue())
-        if not (parse_mm("0.01") <= w <= parse_mm("10000") and
-                parse_mm("0.01") <= h <= parse_mm("10000")):
-            raise DimensionError('幅と高さは0.01～10000 mmの範囲にしてください。')
-        if not (-100000 <= x <= 100000 and -100000 <= y <= 100000):
-            raise DimensionError('X・Y座標は±100000 mm以内にしてください。')
-        return place_rectangle(mm_to_iu(x), mm_to_iu(y),
-                               mm_to_iu(w), mm_to_iu(h), self.anchor.GetSelection())
+        if not (parse_mm("0.01") <= w <= 2000 and
+                parse_mm("0.01") <= h <= 2000):
+            raise DimensionError('幅と高さは0.01～2000 mmの範囲にしてください。')
+        if not (-2000 <= x <= 2000 and -2000 <= y <= 2000):
+            raise DimensionError('X・Y座標は±2000 mm以内にしてください。')
+        bounds = place_rectangle(mm_to_iu(x), mm_to_iu(y),
+                                 mm_to_iu(w), mm_to_iu(h), self.anchor_kind if anchor is None else anchor)
+        validate_bounds(bounds)
+        return bounds
 
     def _update_preview(self, _evt=None):
+        error = ''
         try:
             b = self._read()
+            self.pending = b
             txt = (f'外形サイズ：{fmt_iu(b.width)} × {fmt_iu(b.height)} mm\n'
                    f'左上：({fmt_iu(b.left)}, {fmt_iu(b.top)}) mm\n'
                    f'右下：({fmt_iu(b.right)}, {fmt_iu(b.bottom)}) mm')
-        except (DimensionError, ValueError):
-            txt = '入力を修正すると、新しい寸法が表示されます。'
+        except (DimensionError, ValueError) as exc:
+            error = str(exc)
+            txt = '入力を修正してください。\n基板にはまだ反映していません。\n'
         self.preview.SetLabel(txt)
+        self.error.SetLabel(error)
+        self.error.Wrap(max(200, self.canvas.GetSize().width))
+        self.canvas.update_geometry(self.pending, self.anchor_kind, not error)
+        self.FindWindowById(wx.ID_OK).Enable(not error and not self._updating)
         self.Layout()
 
     def _ok(self, _evt):
@@ -284,6 +351,8 @@ class SmartDimensionDialog(wx.Dialog):
 
 
 def _apply(board, mode, shapes, before, after):
+    # Validate every endpoint before mutating any existing item.
+    validate_bounds(after)
     if mode == 'new':
         shape = pcbnew.PCB_SHAPE(board)
         shape.SetShape(pcbnew.SHAPE_T_RECTANGLE)
@@ -314,12 +383,53 @@ def _apply(board, mode, shapes, before, after):
 
 class SmartBoardDimensionPlugin(pcbnew.ActionPlugin):
     def defaults(self):
-        self.name = 'スマート基板寸法（幅・高さ）'
+        self.name = 'スマート基板寸法（PCB上で編集）'
         self.category = '基板外形の編集'
-        self.description = 'Edge.Cutsの長方形を日本語UIで幅・高さ指定して変更します'
-        self.show_toolbar_button = False
+        self.description = 'PCB上の寸法をダブルクリック、または選択してEで基板外形を変更'
+        self.show_toolbar_button = True
 
     def Run(self):
+        global _direct_session
+        from .direct_editor import DirectSession, find_dimensions, sync_dimensions
+        try:
+            board = pcbnew.GetBoard()
+            if board is None:
+                raise DimensionError('PCBエディタで基板を開いてください。')
+            mode, shapes, before = _outline_info(board)
+            find_dimensions(board)  # Reject duplicates before any board mutation.
+            if _direct_session is not None and not _direct_session.matches(board):
+                _direct_session.close()
+                _direct_session = None
+            if _direct_session is None:
+                _direct_session = DirectSession(board, self.name)
+                if mode == 'new':
+                    _apply(board, mode, shapes, before, before)
+                dimensions = sync_dimensions(board, before)
+                pcbnew.FocusOnItem(dimensions[0], pcbnew.Dwgs_User)
+                return
+            session = _direct_session
+            operation = session.pending
+            session.pending = None
+            if operation is None:
+                operation = session.selected_axis()
+            if operation == 'details':
+                self._run_form()
+                sync_dimensions(board, _outline_info(board)[2])
+            elif operation in (0, 1):
+                after = session.edit_value(before, operation)
+                if after is not None and after != before:
+                    _apply(board, mode, shapes, before, after)
+                    sync_dimensions(board, after)
+            else:
+                sync_dimensions(board, before)
+                session.window.Raise()
+        except DimensionError as exc:
+            wx.MessageBox(str(exc), 'スマート基板寸法：変更できません', wx.OK | wx.ICON_WARNING)
+        except Exception as exc:
+            wx.MessageBox(f'PCB上の寸法編集を開始できません。\n{exc}\n\n' + traceback.format_exc(),
+                          'スマート基板寸法：エラー', wx.OK | wx.ICON_ERROR)
+
+    def _run_form(self):
         try:
             board = pcbnew.GetBoard()
             if board is None:

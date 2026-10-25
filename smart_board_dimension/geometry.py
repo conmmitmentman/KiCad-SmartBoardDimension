@@ -137,3 +137,13 @@ def map_corner(old, new, point):
         raise DimensionError('元の辺の端点が基板外形の角にありません。')
     return (new.left if x == old.left else new.right,
             new.top if y == old.top else new.bottom)
+
+
+def validate_bounds(bounds):
+    """Keep coordinates and extents within KiCad's signed 32-bit nanometers."""
+    limit = 2000 * int(IU_PER_MM)
+    if not (0 < bounds.width <= limit and 0 < bounds.height <= limit):
+        raise DimensionError('幅と高さは0より大きく2000 mm以内にしてください。')
+    if any(abs(v) > limit for v in
+           (bounds.left, bounds.top, bounds.right, bounds.bottom)):
+        raise DimensionError('変更後の四隅の座標が±2000 mmを超えます。寸法または基準点を変更してください。')

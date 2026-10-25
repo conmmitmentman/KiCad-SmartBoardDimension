@@ -61,6 +61,7 @@ def load_with_mocked_kicad():
     pcbnew.ActionPlugin = ActionPlugin
     wx = types.ModuleType('wx')
     wx.Dialog = object
+    wx.Panel = object
     sys.modules['pcbnew'] = pcbnew
     sys.modules['wx'] = wx
     spec = importlib.util.spec_from_file_location(
@@ -77,6 +78,15 @@ from smart_board_dimension.geometry import Bounds, DimensionError
 
 
 class IntegrationTests(unittest.TestCase):
+    def test_invalid_coordinates_do_not_partially_modify_rectangle(self):
+        shape = Shape(shape=2)
+        shape.SetStart(Point(10, 20)); shape.SetEnd(Point(40, 50))
+        board = Board([shape])
+        mode, shapes, before = mod._outline_info(board)
+        with self.assertRaises(DimensionError):
+            mod._apply(board, mode, shapes, before, Bounds(10, 20, 100000000000, 50))
+        self.assertEqual((shape.GetStart().x, shape.GetEnd().x), (10, 40))
+
     def test_new_outline(self):
         board = Board()
         mode, shapes, before = mod._outline_info(board)

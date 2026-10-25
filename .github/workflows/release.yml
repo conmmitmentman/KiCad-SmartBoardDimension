@@ -1,0 +1,37 @@
+name: Test and publish release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Run unit and package tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Test native patch generation
+        run: python3 -m unittest discover -s native/tests -v
+      - name: Build distributions from this commit
+        run: |
+          python3 tools/build_release.py
+          python3 tools/build_native_release.py
+      - name: Verify and publish the reviewed distribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/publish_release.py
+      - name: Publish native source preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/publish_native_release.py
