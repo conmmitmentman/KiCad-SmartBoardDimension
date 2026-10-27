@@ -58,6 +58,13 @@ inline bool linearDimension( const PCB_DIMENSION_BASE* dim )
     return dim && ( dim->Type() == PCB_DIM_ALIGNED_T || dim->Type() == PCB_DIM_ORTHOGONAL_T );
 }
 
+inline bool safeDimensionSpan( const VECTOR2I& start, const VECTOR2I& end )
+{
+    // KiCad dimension geometry subtracts integer vectors and rounds the measured length to int.
+    return std::hypot( static_cast<double>( end.x ) - start.x,
+                       static_cast<double>( end.y ) - start.y ) <= pcbIUScale.mmToIU( 2000.0 );
+}
+
 inline bool collectRectangle( BOARD* board, RECT_GEOMETRY& out, wxString& message )
 {
     out = RECT_GEOMETRY();
@@ -166,6 +173,9 @@ inline bool resizeRectangle( BOARD* board, PCB_DIMENSION_BASE* edited, double ta
         auto* dim = dynamic_cast<PCB_DIMENSION_BASE*>( item );
         if( !linearDimension( dim ) || ( rect.findCorner( dim->GetStart() ) < 0
             && rect.findCorner( dim->GetEnd() ) < 0 ) ) continue;
+        if( !safeDimensionSpan( rect.moveCorner( dim->GetStart(), width, newMax ),
+                                rect.moveCorner( dim->GetEnd(), width, newMax ) ) )
+        { message = wxS( "追従する寸法の長さが2000 mmを超えます。" ); return false; }
         if( dim->IsLocked() && ( dim == edited
             || rect.moveCorner( dim->GetStart(), width, newMax ) != dim->GetStart()
             || rect.moveCorner( dim->GetEnd(), width, newMax ) != dim->GetEnd() ) )
@@ -192,3 +202,5 @@ inline bool resizeRectangle( BOARD* board, PCB_DIMENSION_BASE* edited, double ta
     return true;
 }
 } // namespace SMART_BOARD_NATIVE
+
+#include "smart_board_driving_circle.h"

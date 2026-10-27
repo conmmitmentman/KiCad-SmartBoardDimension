@@ -20,11 +20,14 @@ class PatcherTest(unittest.TestCase):
             '    BOARD_COMMIT commit( m_frame );\n'
             '    updateDimensionFromDialog( m_dimension );\n}\n'
         )
+        self.selection = ('#include <pcb_base_edit_frame.h>\n'
+                          '                        m_previousFirstCell = singleSelectedCell();\n'
+                          '    if( aClientFilter )\n        aClientFilter( aWhere, collector, this );\n')
 
     def test_only_intended_anchors_changed(self):
         a, b = patch_pair(self.header, self.cpp)
         self.assertIn('wxCheckBox* m_cbDriveOutline', a)
-        self.assertIn('SMART_BOARD_NATIVE::resizeRectangle', b)
+        self.assertIn('SMART_BOARD_NATIVE::resizeOutline', b)
         self.assertIn(r'\u3053', b)
         self.assertIn('SetupStandardButtons();', b)
         self.assertIn('updateDimensionFromDialog( m_dimension );', b)
@@ -49,7 +52,7 @@ class PatcherTest(unittest.TestCase):
             c.write_text(self.cpp)
             selection = base / 'pcbnew/tools/pcb_selection_tool.cpp'
             selection.parent.mkdir()
-            selection.write_text('#include <pcb_base_edit_frame.h>\n                        m_previousFirstCell = singleSelectedCell();\n')
+            selection.write_text(self.selection)
             old = sys.argv
             try:
                 sys.argv = ['apply_native_patch.py', str(base)]
@@ -61,6 +64,8 @@ class PatcherTest(unittest.TestCase):
             self.assertTrue((source_dir / 'smart_board_driving_dimension_impl.h').is_file())
             self.assertTrue((source_dir / 'smart_board_driving_dimension_ui.h').is_file())
             self.assertIn('editOnCanvas', selection.read_text())
+            self.assertIn('drivingText', selection.read_text())
+            self.assertTrue((source_dir / 'smart_board_driving_circle.h').is_file())
 
     def test_missing_selection_anchor_leaves_sources_untouched(self):
         with tempfile.TemporaryDirectory() as td:
@@ -93,7 +98,7 @@ class PatcherTest(unittest.TestCase):
             source.write_text(self.cpp)
             selection = base / 'pcbnew/tools/pcb_selection_tool.cpp'
             selection.parent.mkdir()
-            selection.write_text('#include <pcb_base_edit_frame.h>\n                        m_previousFirstCell = singleSelectedCell();\n')
+            selection.write_text(self.selection)
             before = {f: f.read_bytes() for f in (header, source, selection)}
             original_write = Path.write_text
             def fail_ui_write(path, *args, **kwargs):

@@ -1,10 +1,12 @@
 # KiCad 10 スマート基板寸法（日本語版）
 
-## 開発中：PCB上の数字から編集するネイティブ版
+## PCB上の数字から編集するネイティブ版 — Source v1.0.0
 
-外部プラグインを毎回起動せず、標準の寸法の数字から数値・計算式を入力できるように、KiCad 10.0.7本体のC++パッチを開発しています。標準寸法ツールの角への吸着を使い、長方形外形の幅・高さを変更する構成です。
+外部プラグインを毎回起動せず、標準寸法の数字から数値・計算式を入力できるKiCad 10.0.7本体のC++パッチです。長方形外形の幅・高さに加え、円形外形の半径・直径を変更する機能を追加しています。
 
-**WindowsでC++ビルド・PCBエディタ起動・C++テスト16件が成功しました。画面上のクリック編集・スナップ・Undo/Redoは検証中です。** Source Preview 1はソースパッチの配布で、コンパイル済みアプリは含みません。実装、対応範囲、ビルド手順と検証状況は [ネイティブ版README](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/blob/main/native/README.md) を参照してください。
+**長方形・円の数字クリック、数式入力、Undo/RedoをWindowsの実画面で確認しました。** [正式なソース配布版](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/tag/native-source-v1.0.0)はソースパッチの配布で、コンパイル済みアプリは含みません。実装、対応範囲、ビルド手順と検証状況は [ネイティブ版README](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/blob/main/native/README.md) を参照してください。
+
+操作感は[SolidCraft](https://github.com/tangency-labs/solidcraft)を参考にした独自実装です。コード・画像は取り込んでおらず、SolidCraftの公式・提携製品ではありません。[参考元とライセンス](ATTRIBUTION.md)に詳細を記載しています。
 
 以下は既存のPythonプラグイン版です。Python版のWindowsインストーラーでは、上記のネイティブ機能は導入されません。
 

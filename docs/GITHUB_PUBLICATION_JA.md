@@ -11,7 +11,11 @@
 
 公開済みバージョンは上書きしません。修正を配布するときはバージョンを増やしてください。ワークフローはGitHub提供の一時トークンを使用し、個人用トークンの登録は不要です。リポジトリでGitHub Actionsが利用可能である必要があります。
 
-ネイティブ版は `native-source-preview-1` という別のプレリリースとしてソースZIPとSHA256を公開します。Python版の自動更新先にはなりません。GitHub ActionsではKiCad本体のC++ビルドやGUIテストは実行しません。ローカルの検証結果と未確認項目を `native/README.md` に記録してください。次回のネイティブ公開時は、`build_native_release.py` のZIP名と `publish_native_release.py` のタグ・公開文を更新してください。
+ネイティブ版は `native-source-v1.0.0` の正式なソースReleaseとしてZIPとSHA256を公開します。Source Preview 1は過去の試作版として保持し、公開済みタグやアセットを置き換えません。新しい版は `tools/build_native_release.py` の `VERSION` を増やし、検証記録と公開文を更新します。
+
+公開前に、対象のクリーンなKiCadソースへ適用し、C++ビルド・回帰テスト・実画面のクリック入力、Undo/Redo、保存・再起動、スナップ配置を確認します。GitHub ActionsではKiCad本体のC++ビルドやGUIテストは実行しません。ローカルの検証結果と未確認項目を `native/README.md` に記録してください。
+
+ネイティブSource Releaseは `--latest=false` で作成し、Python版の自動更新が使う `/releases/latest` はPython版を維持します。公開後は `prerelease=false`、対象コミット、添付ZIPとSHA256、`/releases/latest` がPython版を指すことを確認します。ソース版を正式Releaseにしても、通常のPythonインストーラーにネイティブ機能は入りません。コンパイル済みアプリを配布する場合は、別途ランタイム・ライセンス・導入テストが必要です。
 
 手動公開する場合は、検証済みコミットに `vX.Y.Z` タグを付け、同じバージョンのZIPと `.sha256` を正式Releaseへ添付してください。
 

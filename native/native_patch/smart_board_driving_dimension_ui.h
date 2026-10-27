@@ -15,18 +15,33 @@ namespace SMART_BOARD_NATIVE
 inline bool editOnCanvas( PCB_BASE_EDIT_FRAME* frame, PCB_DIMENSION_BASE* dim )
 {
     RECT_GEOMETRY rect;
+    CIRCLE_GEOMETRY circle;
     wxString error;
-    if( dim->IsLocked() || !collectRectangle( frame->GetBoard(), rect, error ) ) return false;
-    const int axis = dimensionAxis( rect, dim );
-    if( axis < 0 ) return false;
+    if( dim->IsLocked() || dim->GetEditFlags() != 0 ) return false;
+    wxString label;
+    double currentMM = 0;
+    if( collectCircle( frame->GetBoard(), circle, error ) )
+    {
+        const int factor = circleDimensionFactor( circle, dim );
+        if( !factor ) return false;
+        label = factor == 1 ? wxS( "半径 (mm) · 中心固定" ) : wxS( "直径 (mm) · 中心固定" );
+        currentMM = circle.radius * factor / pcbIUScale.IU_PER_MM;
+    }
+    else
+    {
+        if( !collectRectangle( frame->GetBoard(), rect, error ) ) return false;
+        const int axis = dimensionAxis( rect, dim );
+        if( axis < 0 ) return false;
+        label = axis == 0 ? wxS( "幅 (mm) · 左辺固定" ) : wxS( "高さ (mm) · 上辺固定" );
+        currentMM = pcbIUScale.IUTomm( axis == 0 ? rect.right-rect.left : rect.bottom-rect.top );
+    }
 
     wxDialog popup( frame, wxID_ANY, wxS( "寸法を変更" ), wxDefaultPosition, wxDefaultSize,
                     wxBORDER_SIMPLE );
     auto* layout = new wxBoxSizer( wxVERTICAL );
-    auto* hint = new wxStaticText( &popup, wxID_ANY,
-        axis == 0 ? wxS( "幅 (mm) · 左辺固定" ) : wxS( "高さ (mm) · 上辺固定" ) );
+    auto* hint = new wxStaticText( &popup, wxID_ANY, label );
     auto* input = new wxTextCtrl( &popup, wxID_ANY,
-        wxString::Format( wxS( "%.6g" ), pcbIUScale.IUTomm( axis == 0 ? rect.right-rect.left : rect.bottom-rect.top ) ),
+        wxString::Format( wxS( "%.6g" ), currentMM ),
         wxDefaultPosition, popup.FromDIP( wxSize( 260, -1 ) ), wxTE_PROCESS_ENTER );
     auto* status = new wxStaticText( &popup, wxID_ANY, wxS( "数値・計算式 → Enter確定 / Esc取消" ) );
     layout->Add( hint, 0, wxALL, popup.FromDIP( 8 ) );
@@ -51,7 +66,7 @@ inline bool editOnCanvas( PCB_BASE_EDIT_FRAME* frame, PCB_DIMENSION_BASE* dim )
             popup.Fit(); input->SetFocus(); input->SelectAll(); return;
         }
         BOARD_COMMIT commit( frame );
-        if( !resizeRectangle( frame->GetBoard(), dim, millimetres, commit, error ) )
+        if( !resizeOutline( frame->GetBoard(), dim, millimetres, commit, error ) )
         {
             status->SetLabel( error ); status->Wrap( popup.FromDIP( 260 ) );
             popup.Fit(); return;

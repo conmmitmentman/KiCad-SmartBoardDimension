@@ -31,7 +31,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/publish_release.py
-      - name: Publish native source preview
+      - name: Publish native source release
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/publish_native_release.py

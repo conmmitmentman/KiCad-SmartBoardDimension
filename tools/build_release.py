@@ -13,6 +13,7 @@ RELEASE_FILES = (
     'README.md',
     'README_最初にお読みください.txt',
     'LICENSE',
+    'ATTRIBUTION.md',
     'CHANGELOG.md',
     'Windows_インストール.bat',
     'Windows_更新.bat',

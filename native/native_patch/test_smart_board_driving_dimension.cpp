@@ -121,3 +121,126 @@ BOOST_AUTO_TEST_CASE( FourLinesRequireExactConnections )
     BOOST_CHECK(!SMART_BOARD_NATIVE::collectRectangle(&board,rect,error));
 }
 BOOST_AUTO_TEST_SUITE_END()
+
+namespace
+{
+struct CIRCLE_FIXTURE
+{
+    BOARD board;
+    TOOL_MANAGER manager;
+    KI_TEST::DUMMY_TOOL* tool;
+    PCB_SHAPE* circle;
+    PCB_DIM_RADIAL* radius;
+    PCB_DIM_ALIGNED* diameter;
+    CIRCLE_FIXTURE()
+    {
+        manager.SetEnvironment( &board, nullptr, nullptr, nullptr, nullptr );
+        tool = new KI_TEST::DUMMY_TOOL(); manager.RegisterTool( tool );
+        circle = new PCB_SHAPE( &board, SHAPE_T::CIRCLE ); circle->SetLayer( Edge_Cuts );
+        circle->SetStart( { 100000000, 100000000 } ); circle->SetEnd( { 120000000, 100000000 } );
+        board.Add( circle );
+        radius = new PCB_DIM_RADIAL( &board ); radius->SetLayer( Dwgs_User );
+        radius->SetStart( circle->GetStart() ); radius->SetEnd( circle->GetEnd() );
+        radius->SetTextPos( { 140000000, 90000000 } ); radius->Update(); board.Add( radius );
+        diameter = new PCB_DIM_ALIGNED( &board ); diameter->SetLayer( Dwgs_User );
+        diameter->SetStart( { 80000000, 100000000 } ); diameter->SetEnd( circle->GetEnd() );
+        diameter->SetHeight( -30000000 ); diameter->Update(); board.Add( diameter );
+    }
+};
+}
+BOOST_AUTO_TEST_SUITE( SmartBoardDrivingCircles )
+BOOST_FIXTURE_TEST_CASE( RadiusKeepsCenterAndUpdatesDiameter, CIRCLE_FIXTURE )
+{
+    BOARD_COMMIT commit( tool ); wxString error;
+    BOOST_REQUIRE( SMART_BOARD_NATIVE::resizeOutline( &board, radius, 30, commit, error ) );
+    BOOST_CHECK( circle->GetStart() == VECTOR2I( 100000000, 100000000 ) );
+    BOOST_CHECK( circle->GetEnd() == VECTOR2I( 130000000, 100000000 ) );
+    BOOST_CHECK_EQUAL( radius->GetMeasuredValue(), 30000000 );
+    BOOST_CHECK_EQUAL( diameter->GetMeasuredValue(), 60000000 );
+    for( BOARD_ITEM* item : std::vector<BOARD_ITEM*>{ circle, radius, diameter } )
+        BOOST_CHECK_EQUAL( commit.GetStatus( item ), CHT_MODIFY );
+}
+BOOST_FIXTURE_TEST_CASE( DiameterUsesHalfTheEnteredLength, CIRCLE_FIXTURE )
+{
+    BOARD_COMMIT commit( tool ); wxString error;
+    BOOST_REQUIRE( SMART_BOARD_NATIVE::resizeOutline( &board, diameter, 56, commit, error ) );
+    BOOST_CHECK_EQUAL( radius->GetMeasuredValue(), 28000000 );
+    BOOST_CHECK_EQUAL( diameter->GetMeasuredValue(), 56000000 );
+    BOOST_CHECK( circle->GetEnd() == VECTOR2I( 128000000, 100000000 ) );
+    BOOST_CHECK( diameter->GetStart() == VECTOR2I( 72000000, 100000000 ) );
+}
+BOOST_FIXTURE_TEST_CASE( DiagonalRadiusPreservesItsDirection, CIRCLE_FIXTURE )
+{
+    // 3-4-5 triangle direction; circle geometry and annotation need not share an angle.
+    radius->SetEnd( { 112000000, 116000000 } ); radius->Update();
+    BOARD_COMMIT commit( tool ); wxString error;
+    BOOST_REQUIRE( SMART_BOARD_NATIVE::resizeCircle( &board, radius, 25, commit, error ) );
+    BOOST_CHECK( radius->GetEnd() == VECTOR2I( 115000000, 120000000 ) );
+    BOOST_CHECK( circle->GetEnd() == VECTOR2I( 125000000, 100000000 ) );
+}
+BOOST_FIXTURE_TEST_CASE( RejectsChordAndDetachedCenterWithoutStaging, CIRCLE_FIXTURE )
+{
+    diameter->SetStart( { 100000000, 80000000 } ); diameter->Update();
+    BOARD_COMMIT commit( tool ); wxString error;
+    BOOST_CHECK( !SMART_BOARD_NATIVE::resizeCircle( &board, diameter, 56, commit, error ) );
+    radius->SetStart( { 100100000, 100000000 } ); radius->Update();
+    BOOST_CHECK( !SMART_BOARD_NATIVE::resizeCircle( &board, radius, 30, commit, error ) );
+    BOOST_CHECK( circle->GetEnd() == VECTOR2I( 120000000, 100000000 ) );
+    BOOST_CHECK_EQUAL( commit.GetStatus( circle ), 0 );
+}
+BOOST_FIXTURE_TEST_CASE( RejectsEveryLockedParticipantBeforeMutation, CIRCLE_FIXTURE )
+{
+    for( BOARD_ITEM* item : std::vector<BOARD_ITEM*>{ circle, radius, diameter } )
+    {
+        item->SetLocked( true );
+        BOARD_COMMIT commit( tool ); wxString error;
+        BOOST_CHECK( !SMART_BOARD_NATIVE::resizeCircle( &board, radius, 30, commit, error ) );
+        BOOST_CHECK( circle->GetEnd() == VECTOR2I( 120000000, 100000000 ) );
+        BOOST_CHECK_EQUAL( commit.GetStatus( circle ), 0 );
+        item->SetLocked( false );
+    }
+}
+BOOST_FIXTURE_TEST_CASE( CircleExtentAndInvalidSizesAreAtomic, CIRCLE_FIXTURE )
+{
+    circle->SetStart( { 1980000000, 0 } ); circle->SetEnd( { 2000000000, 0 } );
+    radius->SetStart( circle->GetStart() ); radius->SetEnd( circle->GetEnd() ); radius->Update();
+    for( double size : { 0.0, -1.0, 1001.0, 30.0 } )
+    {
+        BOARD_COMMIT commit( tool ); wxString error;
+        BOOST_CHECK( !SMART_BOARD_NATIVE::resizeCircle( &board, radius, size, commit, error ) );
+        BOOST_CHECK_EQUAL( circle->GetEnd().x, 2000000000 );
+        BOOST_CHECK_EQUAL( commit.GetStatus( circle ), 0 );
+    }
+}
+BOOST_FIXTURE_TEST_CASE( OneAttachedEndpointMovesAndExternalEndpointStays, CIRCLE_FIXTURE )
+{
+    auto* extra = new PCB_DIM_ALIGNED( &board ); extra->SetLayer( Dwgs_User );
+    extra->SetStart( { 100000000, 120000000 } ); extra->SetEnd( { 100000000, 170000000 } );
+    extra->Update(); board.Add( extra );
+    BOARD_COMMIT commit( tool ); wxString error;
+    BOOST_REQUIRE( SMART_BOARD_NATIVE::resizeCircle( &board, radius, 30, commit, error ) );
+    BOOST_CHECK( extra->GetStart() == VECTOR2I( 100000000, 130000000 ) );
+    BOOST_CHECK( extra->GetEnd() == VECTOR2I( 100000000, 170000000 ) );
+}
+BOOST_FIXTURE_TEST_CASE( MultipleOutlinesAreRejected, CIRCLE_FIXTURE )
+{
+    auto* second = new PCB_SHAPE( &board, SHAPE_T::CIRCLE ); second->SetLayer( Edge_Cuts );
+    second->SetStart( { 200000000, 100000000 } ); second->SetEnd( { 220000000, 100000000 } );
+    board.Add( second );
+    BOARD_COMMIT commit( tool ); wxString error;
+    BOOST_CHECK( !SMART_BOARD_NATIVE::resizeOutline( &board, radius, 30, commit, error ) );
+    BOOST_CHECK_EQUAL( commit.GetStatus( circle ), 0 );
+}
+BOOST_FIXTURE_TEST_CASE( RelatedLongDimensionIsRejectedBeforeMutation, CIRCLE_FIXTURE )
+{
+    circle->SetStart( { 980000000, 0 } ); circle->SetEnd( { 1000000000, 0 } );
+    radius->SetStart( circle->GetStart() ); radius->SetEnd( circle->GetEnd() ); radius->Update();
+    auto* extra = new PCB_DIM_ALIGNED( &board ); extra->SetLayer( Dwgs_User );
+    extra->SetStart( circle->GetEnd() ); extra->SetEnd( { -1000000000, 0 } );
+    extra->Update(); board.Add( extra );
+    BOARD_COMMIT commit( tool ); wxString error;
+    BOOST_CHECK( !SMART_BOARD_NATIVE::resizeCircle( &board, radius, 30, commit, error ) );
+    BOOST_CHECK_EQUAL( circle->GetEnd().x, 1000000000 );
+    BOOST_CHECK_EQUAL( commit.GetStatus( circle ), 0 );
+}
+BOOST_AUTO_TEST_SUITE_END()

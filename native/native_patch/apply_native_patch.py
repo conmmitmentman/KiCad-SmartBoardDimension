@@ -36,7 +36,7 @@ def patch_pair(header: str, source: str) -> tuple[str, str]:
     constructor_code = r'''
     // SMART_BOARD_NATIVE: opt-in directly in the built-in Dimension Properties window.
     // Object snapping during dimension placement is handled by KiCad's native drawing tool.
-    if( m_dimension->Type() == PCB_DIM_ALIGNED_T || m_dimension->Type() == PCB_DIM_ORTHOGONAL_T )
+    if( SMART_BOARD_NATIVE::linearDimension( m_dimension ) || m_dimension->Type() == PCB_DIM_RADIAL_T )
     {
         m_cbDriveOutline = new wxCheckBox( m_sizerFormat->GetStaticBox(), wxID_ANY,
                              wxString( L"\u3053\u306e\u5bf8\u6cd5\u5024\u3067\u57fa\u677f\u5916\u5f62\u3092\u5909\u66f4\uff08mm\uff09" ) );
@@ -68,7 +68,7 @@ def patch_pair(header: str, source: str) -> tuple[str, str]:
             return false;
         }
         wxString error;
-        if( !SMART_BOARD_NATIVE::resizeRectangle( m_frame->GetBoard(), m_dimension,
+        if( !SMART_BOARD_NATIVE::resizeOutline( m_frame->GetBoard(), m_dimension,
                                                    millimetres, commit, error ) )
         {
             wxMessageBox( error, wxString( L"\u99c6\u52d5\u5bf8\u6cd5" ), wxOK | wxICON_WARNING, this );
@@ -106,20 +106,45 @@ def main():
     selection_text = selection.read_text(encoding='utf-8')
     selection_text = insert_once(selection_text, '#include <pcb_base_edit_frame.h>',
         '\n#include "../dialogs/smart_board_driving_dimension_ui.h" // SMART_BOARD_NATIVE\n')
+    selection_text = insert_once(selection_text,
+        '    if( aClientFilter )\n        aClientFilter( aWhere, collector, this );', r'''
+
+    // SMART_BOARD_NATIVE: text wins over an overlapping outline, but obey visibility,
+    // selection filters, modifiers and normal drag behavior.
+    if( !aOnDrag && !aClientFilter && !m_isFootprintEditor && !hasModifier()
+        && m_frame->ToolStackIsEmpty() )
+    {
+        std::set<EDA_ITEM*> drivingText;
+        for( EDA_ITEM* item : collector )
+        {
+            auto* dim = dynamic_cast<PCB_DIMENSION_BASE*>( item );
+            if( dim && dim->TextHitTest( aWhere )
+                && SMART_BOARD_NATIVE::canDriveDimension( board(), dim ) )
+                drivingText.insert( item );
+        }
+        if( !drivingText.empty() )
+            for( int i = collector.GetCount() - 1; i >= 0; --i )
+                if( !drivingText.count( collector[i] ) ) collector.Remove( i );
+    }
+''')
     selection_text = insert_once(selection_text, '                        m_previousFirstCell = singleSelectedCell();', r"""
                         // SMART_BOARD_NATIVE: normal selection remains available on lines/handles.
                         if( brd_editor && !hasModifier() && m_frame->ToolStackIsEmpty()
                             && m_selection.GetSize() == 1 )
                         {
                             auto* dim = dynamic_cast<PCB_DIMENSION_BASE*>( m_selection[0] );
-                            if( dim && dim->TextHitTest( evt->Position() ) )
-                                SMART_BOARD_NATIVE::editOnCanvas(
-                                    static_cast<PCB_BASE_EDIT_FRAME*>( frame ), dim );
+                            if( dim && dim->TextHitTest( evt->Position() )
+                                && SMART_BOARD_NATIVE::editOnCanvas(
+                                    static_cast<PCB_BASE_EDIT_FRAME*>( frame ), dim ) )
+                            {
+                                ClearSelection(); // allow another text click without point handles
+                                m_frame->GetCanvas()->SetFocus(); // restore save/undo shortcuts
+                            }
                         }
 """)
     outputs = {header: htext, source: ctext, selection: selection_text}
     payload = pathlib.Path(__file__).parent
-    for name in ('smart_board_driving_dimension_impl.h', 'smart_board_driving_dimension_ui.h'):
+    for name in ('smart_board_driving_dimension_impl.h', 'smart_board_driving_dimension_ui.h', 'smart_board_driving_circle.h'):
         target = directory / name
         if target.exists():
             raise RuntimeError(f'Additional header already exists: {target}')
