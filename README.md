@@ -12,7 +12,7 @@
 
 現在公開中の[Source v1.0.0](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/tag/native-source-v1.0.0)はソース版です。ZIPを入れるだけでは使えません。
 
-**一般ユーザー向けWindowsインストーラーは準備中です。** コマンド入力やビルドを不要にし、日本語の起動画面、必要な実行環境の同梱、専用デスクトップアイコンを提供する方針です。まだ公開済みのインストーラーはありません。
+**一般ユーザー向けWindowsインストーラーは準備中です。** 日本語の導入・起動画面、必要な実行環境の同梱、専用デスクトップアイコンを実装し、開発PCでの導入と日本語のPCBエディタ起動を確認しました。一般配布ZIPはまだ公開していません。
 
 [導入と開発状況](native/INSTALL_JA.md) / [操作・対応範囲・検証記録](native/README.md)
 

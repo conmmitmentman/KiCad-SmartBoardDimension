@@ -21,7 +21,9 @@ class Launcher : Form
     }
     static void Verify(string root)
     {
-        foreach (string line in File.ReadAllLines(Path.Combine(root, "manifest.sha256")))
+        string[] lines = File.ReadAllLines(Path.Combine(root, "manifest.sha256"));
+        if (lines.Length == 0) throw new IOException("配布ファイル一覧が空です。ZIP全体を展開し直してください。");
+        foreach (string line in lines)
         {
             if (line.Length < 67 || Hash(SafePath(root, line.Substring(66))) != line.Substring(0, 64))
                 throw new IOException("ファイルの検証に失敗しました。ZIP全体を展開し直してください。");
@@ -63,11 +65,24 @@ class Launcher : Form
         File.WriteAllText(Path.Combine(UserData, "installed-path.txt"), target);
         return exe;
     }
-    static void StartEditor(string board)
+    static void PrepareConfig(string config, string stock)
     {
-        string config = Path.Combine(UserData, "config", "10.0"); Directory.CreateDirectory(config);
+        Directory.CreateDirectory(config);
         string common = Path.Combine(config, "kicad_common.json");
         if (!File.Exists(common)) File.WriteAllText(common, "{\"system\":{\"language\":\"日本語\"}}", new System.Text.UTF8Encoding(false));
+        foreach (string table in new [] { "fp-lib-table", "sym-lib-table", "design-block-lib-table" })
+        {
+            string target = Path.Combine(config, table);
+            if (File.Exists(target)) continue; // Never replace the user's library choices.
+            string standard = Path.Combine(stock, "template", table);
+            if (File.Exists(standard)) File.Copy(standard, target);
+            else File.WriteAllText(target, "(" + table.Replace('-', '_') + " (version 7))\n", new System.Text.UTF8Encoding(false));
+        }
+    }
+    static void StartEditor(string board)
+    {
+        string stock = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "KiCad", "10.0", "share", "kicad");
+        PrepareConfig(Path.Combine(UserData, "config", "10.0"), stock);
         string exe = Path.Combine(Root, "bin", "pcbnew.exe");
         if (!File.Exists(exe) || !File.Exists(Path.Combine(Root,"share","kicad","internat","ja","kicad.mo")))
             throw new IOException("本体または日本語ファイルがありません。インストールをやり直してください。");
@@ -80,6 +95,11 @@ class Launcher : Form
         p.EnvironmentVariables["PYTHONHOME"] = Path.Combine(Root, "python");
         p.EnvironmentVariables["PYTHONPATH"] = Path.Combine(Root,"bin") + ";" + Path.Combine(Root,"python","Lib","site-packages");
         p.EnvironmentVariables["PATH"] = Path.Combine(Root,"bin") + ";" + Path.Combine(Root,"python") + ";" + Environment.GetFolderPath(Environment.SpecialFolder.System);
+        foreach (string item in new [] { "FOOTPRINT:footprints", "SYMBOL:symbols", "3DMODEL:3dmodels", "TEMPLATE:template" })
+        {
+            string[] parts = item.Split(':'); string path = Path.Combine(stock, parts[1]);
+            if (Directory.Exists(path)) p.EnvironmentVariables["KICAD10_" + parts[0] + "_DIR"] = path;
+        }
         Process.Start(p);
     }
     void Run(Action action) { try { action(); } catch (Exception e) { MessageBox.Show(this, e.Message, "スマート基板寸法", MessageBoxButtons.OK, MessageBoxIcon.Error); } }
@@ -91,7 +111,8 @@ class Launcher : Form
         bool installer = Directory.Exists(Path.Combine(Root, "app"));
         var intro = new Label { Left=24, Top=20, Width=520, Height=68, Text=installer ? "日本語で使えるPCB寸法エディタを導入します。\n管理者権限・コマンド入力は不要です。\n通常のKiCadはそのまま使えます。" : "PCB上の寸法の数字をクリックして、数値・計算式で変更できます。\n長方形の幅・高さ、円の半径・直径に対応しています。\nこの画面から開くとネイティブ版を使えます。" };
         Controls.Add(intro);
-        status = new Label { Left=24, Top=205, Width=520, Height=80, AutoEllipsis=true, Text=installer ? "デスクトップとスタートメニューに専用アイコンを作成します。" : "導入済み / 日本語対応\n場所: " + Root };
+        bool installed = Root.StartsWith(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "SmartBoardDimension") + "\\", StringComparison.OrdinalIgnoreCase);
+        status = new Label { Left=24, Top=205, Width=520, Height=80, AutoEllipsis=true, Text=installer ? "デスクトップとスタートメニューに専用アイコンを作成します。" : (installed ? "導入済み / 日本語対応" : "展開フォルダーから起動 / 日本語対応") + "\n場所: " + Root };
         Controls.Add(status);
         var primary = new Button { Left=24, Top=100, Width=250, Height=42, Text=installer ? "インストール" : "基板ファイルを開く" };
         Controls.Add(primary);

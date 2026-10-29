@@ -105,7 +105,7 @@
 		(pts
 			(xy 72.3 100.4) (xy 128.3 100.4)
 		)
-		(height -28)
+		(height -18)
 		(format
 			(prefix "")
 			(suffix "")
@@ -124,7 +124,7 @@
 			(keep_text_aligned yes)
 		)
 		(gr_text "56"
-			(at 100.3 70.7 0)
+			(at 100.3 80.7 0)
 			(layer "Dwgs.User")
 			(uuid "b8425003-5d08-413a-9106-32dc64bf4898")
 			(effects
@@ -159,7 +159,7 @@
 			(keep_text_aligned yes)
 		)
 		(gr_text "R 28"
-			(at 136.3 88.4 67)
+			(at 120.3 92.4 -36)
 			(layer "Dwgs.User")
 			(uuid "dd247c6b-75df-4694-82ab-4f6ae2efba8b")
 			(effects

@@ -1,0 +1,23 @@
+name: Windows native launcher
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  launcher:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Compile and test the installer without modifying the runner profile
+        shell: pwsh
+        run: |
+          $compiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+          & $compiler /nologo /target:winexe /platform:x64 /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:Microsoft.CSharp.dll /out:Launcher-test.exe (Resolve-Path native/windows/Launcher.cs).Path
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./native/windows/test_launcher.ps1 -AssemblyPath ./Launcher-test.exe

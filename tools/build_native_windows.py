@@ -46,10 +46,12 @@ def stage(build, stock, output):
     if (stock / 'share/doc').is_dir():
         shutil.copytree(stock / 'share/doc', app / 'licenses/stock')
     shutil.copytree(ROOT / 'native', app / 'source-patch',
-                    ignore=shutil.ignore_patterns('__pycache__', '*.kicad_pro', '*.kicad_prl'))
+                    ignore=shutil.ignore_patterns('__pycache__', '*.kicad_pro', '*.kicad_prl',
+                                                  '*.lck', '*~', '*.bak', '*-backups'))
     (app / 'examples').mkdir()
     shutil.copy2(ROOT / 'native/examples/circle.kicad_pcb', app / 'examples/circle.kicad_pcb')
     shutil.copy2(ROOT / 'ATTRIBUTION.md', app / 'ATTRIBUTION.md')
+    shutil.copy2(ROOT / 'LICENSE', app / 'licenses/Launcher-MIT.txt')
     compiler = Path('C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe')
     subprocess.run([str(compiler), '/nologo', '/target:winexe', '/platform:x64',
                     '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll',

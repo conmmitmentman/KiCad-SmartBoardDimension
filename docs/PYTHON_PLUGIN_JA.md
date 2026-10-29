@@ -162,10 +162,10 @@ Windows の再起動や KiCad の再起動ごとに再インストールする�
 
 - [開発・テスト手順](DEVELOPMENT_JA.md)
 - [オンライン更新の設定・仕様](ONLINE_UPDATE_JA.md)
-- [更新履歴](CHANGELOG.md)
+- [更新履歴](../CHANGELOG.md)
 - [今後の機能案](ROADMAP_JA.md)
-- [不具合報告・機能提案](CONTRIBUTING.md)
-- [セキュリティについて](SECURITY.md)
+- [不具合報告・機能提案](../CONTRIBUTING.md)
+- [セキュリティについて](../SECURITY.md)
 
 ## 公式資料
 
@@ -178,4 +178,4 @@ Windows の再起動や KiCad の再起動ごとに再インストールする�
 
 ## ライセンス
 
-[MIT License](LICENSE)。無保証。本プロジェクトは KiCad 開発チームとは独立した非公式ツールです。
+[MIT License](../LICENSE)。無保証。本プロジェクトは KiCad 開発チームとは独立した非公式ツールです。
