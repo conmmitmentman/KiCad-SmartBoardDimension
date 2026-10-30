@@ -44,6 +44,8 @@ def main():
     print(f'Validated v{version}: {archive.name}')
     if args.check_only:
         return
+    from build_pcm_release import build as build_pcm
+    pcm_archive = build_pcm(REPOSITORY / 'dist')
     repo = os.environ['GITHUB_REPOSITORY']
     sha = os.environ['GITHUB_SHA']
     tag = f'v{version}'
@@ -63,7 +65,9 @@ def main():
     notes.write_text(f'## スマート基板寸法 {tag}\n' + '\n'.join(section.splitlines()[1:])
                      + '\n詳細・導入方法はREADMEとdocs/VALIDATION_JA.mdを参照してください。\n', encoding='utf-8')
     subprocess.run(['gh', 'release', 'create', tag, str(archive), str(checksum),
+                    str(pcm_archive), str(pcm_archive.with_suffix('.zip.sha256')),
                     '--repo', repo, '--target', sha, '--title', f'スマート基板寸法 {tag}',
+                    '--prerelease', '--latest=false',
                     '--notes-file', str(notes)], check=True)
 
 

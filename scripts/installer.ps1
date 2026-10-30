@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 $pluginName = 'smart_board_dimension'
 $sourceRoot = Split-Path -Parent $PSScriptRoot
 $source = Join-Path $sourceRoot $pluginName
-$files = @('__init__.py', 'geometry.py', 'updater.py', 'canvas.py', 'direct_editor.py')
+$files = @('__init__.py', 'geometry.py', 'updater.py', 'canvas.py', 'direct_editor.py', 'driving.py')
 $required = @('__init__.py', 'geometry.py')
 $backupRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'SmartBoardDimension\backups'
 

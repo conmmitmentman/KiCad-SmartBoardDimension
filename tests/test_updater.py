@@ -26,7 +26,7 @@ class UpdaterTests(unittest.TestCase):
         with mock.patch.object(updater.request, 'urlopen',
                                side_effect=HTTPError('https://api.github.com', 404, 'Not Found', {}, None)):
             with self.assertRaisesRegex(updater.UpdateError, '正式Release'):
-                updater.check_latest('author/repo', '1.3.0')
+                updater.check_latest('author/repo', '1.4.0')
 
     def test_bom_settings_and_invalid_structure(self):
         with tempfile.TemporaryDirectory() as folder, mock.patch.dict('os.environ', {'LOCALAPPDATA': folder}):
@@ -56,9 +56,9 @@ class UpdaterTests(unittest.TestCase):
                 updater.parse_repository(invalid)
 
     def test_version_comparison(self):
-        self.assertLess(updater.version_tuple('1.3.0'), updater.version_tuple('v1.12.0'))
+        self.assertLess(updater.version_tuple('1.4.0'), updater.version_tuple('v1.12.0'))
         with self.assertRaises(updater.UpdateError):
-            updater.version_tuple('1.3.0rc1')
+            updater.version_tuple('1.4.0rc1')
 
     def test_user_setting_round_trip(self):
         with tempfile.TemporaryDirectory() as folder, \
@@ -71,20 +71,20 @@ class UpdaterTests(unittest.TestCase):
     def _release_info(self):
         size = len(self.package_bytes)
         payload = {
-            'tag_name': 'v1.3.0', 'draft': False, 'prerelease': False,
+            'tag_name': 'v1.4.0', 'draft': False, 'prerelease': False,
             'assets': [{
-                'name': 'KiCad10_SmartBoardDimension_v1.3.0_Windows.zip',
+                'name': 'KiCad10_SmartBoardDimension_v1.4.0_Windows.zip',
                 'state': 'uploaded', 'size': size,
-                'browser_download_url': 'https://github.com/author/repo/releases/download/v1.3.0/KiCad10_SmartBoardDimension_v1.3.0_Windows.zip',
+                'browser_download_url': 'https://github.com/author/repo/releases/download/v1.4.0/KiCad10_SmartBoardDimension_v1.4.0_Windows.zip',
                 'digest': 'sha256:' + hashlib.sha256(self.package_bytes).hexdigest(),
             }],
         }
         with mock.patch.object(updater, '_get_url', return_value=json.dumps(payload).encode()):
             info = updater.check_latest('author/repo', '1.1.0')
             self.assertTrue(info['available'])
-            self.assertEqual(info['latest'], '1.3.0')
+            self.assertEqual(info['latest'], '1.4.0')
             self.assertEqual(info['size'], size)
-            self.assertFalse(updater.check_latest('author/repo', '1.3.0')['available'])
+            self.assertFalse(updater.check_latest('author/repo', '1.4.0')['available'])
         return info
 
     def test_release_check_found(self):
@@ -104,7 +104,7 @@ class UpdaterTests(unittest.TestCase):
             with mock.patch.object(updater, '_get_url', side_effect=fake_url), \
                  mock.patch.object(updater, 'app_directory', return_value=root / 'local'):
                 backup = updater.perform_update(installed, '1.1.0', result)
-            self.assertIn("PLUGIN_VERSION = '1.3.0'", (installed / '__init__.py').read_text(encoding='utf-8'))
+            self.assertIn("PLUGIN_VERSION = '1.4.0'", (installed / '__init__.py').read_text(encoding='utf-8'))
             self.assertTrue((installed / 'updater.py').is_file())
             self.assertEqual((backup / '__init__.py').read_text(encoding='utf-8'), "PLUGIN_VERSION = '1.1.0'\n")
             self.assertFalse((backup / 'updater.py').exists())
@@ -118,8 +118,8 @@ class UpdaterTests(unittest.TestCase):
                 updater.perform_update(Path('/unused'), '1.1.0', valid)
 
     def test_manifest_verify_and_tamper(self):
-        files = updater.verify_archive(self.package_bytes, '1.3.0')
-        self.assertEqual(set(files), {'__init__.py', 'geometry.py', 'updater.py', 'canvas.py', 'direct_editor.py'})
+        files = updater.verify_archive(self.package_bytes, '1.4.0')
+        self.assertEqual(set(files), {'__init__.py', 'geometry.py', 'updater.py', 'canvas.py', 'direct_editor.py', 'driving.py'})
         with self.assertRaisesRegex(updater.UpdateError, 'バージョン'):
             updater.verify_archive(self.package_bytes, '9.9.9')
         modified = io.BytesIO()
@@ -130,7 +130,7 @@ class UpdaterTests(unittest.TestCase):
                     data += b'\n# changed\n'
                 dest.writestr(name, data)
         with self.assertRaisesRegex(updater.UpdateError, '検証'):
-            updater.verify_archive(modified.getvalue(), '1.3.0')
+            updater.verify_archive(modified.getvalue(), '1.4.0')
 
     def test_reject_bad_module_name_even_with_valid_manifest(self):
         manifest = dict(self.manifest)
@@ -143,10 +143,10 @@ class UpdaterTests(unittest.TestCase):
                         else source.read(name))
                 dest.writestr(name, data)
         with self.assertRaisesRegex(updater.UpdateError, 'ファイル名'):
-            updater.verify_archive(edited.getvalue(), '1.3.0')
+            updater.verify_archive(edited.getvalue(), '1.4.0')
 
     def test_install_rolls_back_if_file_replacement_fails(self):
-        files = updater.verify_archive(self.package_bytes, '1.3.0')
+        files = updater.verify_archive(self.package_bytes, '1.4.0')
         with tempfile.TemporaryDirectory() as folder:
             parent = Path(folder)
             plugin = parent / 'smart_board_dimension'
@@ -163,14 +163,14 @@ class UpdaterTests(unittest.TestCase):
                 return real_replace(src, dst)
             with mock.patch.object(updater.os, 'replace', side_effect=fail_once):
                 with self.assertRaisesRegex(updater.UpdateError, '失敗'):
-                    updater.install_files(plugin, files, '1.1.0', '1.3.0', parent/'backups')
+                    updater.install_files(plugin, files, '1.1.0', '1.4.0', parent/'backups')
             for name, source in old.items():
                 self.assertEqual((plugin/name).read_bytes(), source)
             self.assertFalse((plugin/'updater.py').exists())
 
     def test_no_downgrade(self):
         with self.assertRaisesRegex(updater.UpdateError, '最新版ではない'):
-            updater.install_files(Path('/unused'), {'updater.py': b''}, '2.0.0', '1.3.0')
+            updater.install_files(Path('/unused'), {'updater.py': b''}, '2.0.0', '1.4.0')
 
 
 if __name__ == '__main__':

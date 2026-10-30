@@ -32,7 +32,7 @@ class ReleaseBuildTests(unittest.TestCase):
                              'Windows_前の版に戻す.bat', 'README.md'):
                     self.assertIn(name, names)
                 self.assertIsNone(archive.testzip())
-                self.assertIn(b"PLUGIN_VERSION = '1.3.0'",
+                self.assertIn(b"PLUGIN_VERSION = '1.4.0'",
                               archive.read('smart_board_dimension/__init__.py'))
 
     def test_powershell_script_is_utf8_bom(self):

@@ -22,6 +22,7 @@ class Shape:
         self.layer = 44
         self.corner_radius = 0
         self.board = board
+        self.locked = False
 
     def GetLayer(self): return self.layer
     def SetLayer(self, layer): self.layer = layer
@@ -34,6 +35,7 @@ class Shape:
     def GetCornerRadius(self): return self.corner_radius
     def SetWidth(self, _width): pass
     def SetFilled(self, _flag): pass
+    def IsLocked(self): return self.locked
 
     def GetCorners(self):
         return [Point(self.start.x, self.start.y), Point(self.end.x, self.start.y),
@@ -52,6 +54,7 @@ def load_with_mocked_kicad():
     pcbnew.SHAPE_T_RECTANGLE = 2
     pcbnew.SHAPE_T_RECT = 2
     pcbnew.SHAPE_T_SEGMENT = 1
+    pcbnew.SHAPE_T_CIRCLE = 4
     pcbnew.Edge_Cuts = 44
     pcbnew.FromMM = lambda v: int(v * 1000000)
     pcbnew.VECTOR2I = Point

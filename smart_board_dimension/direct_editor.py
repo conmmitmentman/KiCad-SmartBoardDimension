@@ -190,7 +190,7 @@ class CanvasFilter(wx.EventFilter):
 
 
 class DirectSession:
-    def __init__(self, board, plugin_name):
+    def __init__(self, board, plugin_name, show=True):
         self.editor = find_editor_frame()
         self.menu_id = find_action_menu(self.editor, plugin_name)
         self.board_token = int(board.this)
@@ -225,7 +225,8 @@ class DirectSession:
         self.window.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
         self.filter = CanvasFilter(self)
         wx.EvtHandler.AddFilter(self.filter)
-        self.window.Show()
+        if show:
+            self.window.Show()
 
     def matches(self, board):
         return not self.closed and board is not None and int(board.this) == self.board_token
@@ -241,7 +242,11 @@ class DirectSession:
             if group.GetName() in GROUP_NAMES:
                 lookup[group.m_Uuid.AsString()] = GROUP_NAMES.index(group.GetName())
         axes = {lookup.get(item.m_Uuid.AsString()) for item in selected}
-        return next(iter(axes)) if len(axes) == 1 and None not in axes else None
+        if len(axes) == 1 and None not in axes:
+            return next(iter(axes))
+        from .driving import find_selected
+        dimension = find_selected(board, list(selected))
+        return ('dimension', dimension.m_Uuid.AsString()) if dimension else None
 
     def edit_selected(self):
         if self.closed or self.pending is not None or pcbnew.IsActionRunning():

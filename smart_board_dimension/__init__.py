@@ -15,8 +15,9 @@ from .updater import (UpdateError, get_repository, save_repository,
 from .canvas import DimensionCanvas
 
 
-PLUGIN_VERSION = '1.3.0'
+PLUGIN_VERSION = '1.4.0'
 _direct_session = None
+_startup_timer = None
 
 
 def _point(v):
@@ -213,6 +214,10 @@ class SmartDimensionDialog(wx.Dialog):
             return False
 
     def _check_updates(self, _evt):
+        if Path(__file__).with_name('pcm-managed.txt').exists():
+            wx.MessageBox('PCMで導入した版は、プラグイン＆コンテンツマネージャーから更新してください。',
+                          'プラグインの更新', wx.OK | wx.ICON_INFORMATION, self)
+            return
         try:
             repo = get_repository()
             if not repo:
@@ -353,6 +358,8 @@ class SmartDimensionDialog(wx.Dialog):
 def _apply(board, mode, shapes, before, after):
     # Validate every endpoint before mutating any existing item.
     validate_bounds(after)
+    if any(item.IsLocked() for item in (shapes or [])):
+        raise DimensionError('基板外形がロックされています。')
     if mode == 'new':
         shape = pcbnew.PCB_SHAPE(board)
         shape.SetShape(pcbnew.SHAPE_T_RECTANGLE)
@@ -395,18 +402,37 @@ class SmartBoardDimensionPlugin(pcbnew.ActionPlugin):
             board = pcbnew.GetBoard()
             if board is None:
                 raise DimensionError('PCBエディタで基板を開いてください。')
-            mode, shapes, before = _outline_info(board)
-            find_dimensions(board)  # Reject duplicates before any board mutation.
             if _direct_session is not None and not _direct_session.matches(board):
                 _direct_session.close()
                 _direct_session = None
             if _direct_session is None:
-                _direct_session = DirectSession(board, self.name)
-                if mode == 'new':
-                    _apply(board, mode, shapes, before, before)
-                dimensions = sync_dimensions(board, before)
-                pcbnew.FocusOnItem(dimensions[0], pcbnew.Dwgs_User)
-                return
+                _direct_session = DirectSession(board, self.name, show=False)
+            if _direct_session is not None and _direct_session.matches(board):
+                operation = _direct_session.pending
+                _direct_session.pending = None
+                if operation is None:
+                    operation = _direct_session.selected_axis()
+                if isinstance(operation, tuple) and operation[0] == 'dimension':
+                    from .driving import edit_dialog
+                    selected = next((x for x in board.GetDrawings()
+                                     if x.m_Uuid.AsString() == operation[1]), None)
+                    if selected is None:
+                        raise DimensionError('選択した寸法が見つかりません。')
+                    edit_dialog(board, selected, _direct_session.editor)
+                    return
+                _direct_session.pending = operation
+            from .driving import outline, Circle
+            if any(x.GetLayer() == pcbnew.Edge_Cuts for x in board.GetDrawings()):
+                if isinstance(outline(board)[1], Circle):
+                    wx.MessageBox('標準の半径寸法を円の中心→円周へ配置してください。\n'
+                                  '直径は円周の向かい合う2点に整列寸法を配置します。\n'
+                                  'Escで配置を終え、寸法をクリックするか選択してEを押します。',
+                                  '円の寸法編集', wx.OK | wx.ICON_INFORMATION)
+                    return
+            mode, shapes, before = _outline_info(board)
+            managed = find_dimensions(board)  # Reject duplicates/locks before mutation.
+            if any(item.IsLocked() for item in managed.values()):
+                raise DimensionError('管理する寸法がロックされています。')
             session = _direct_session
             operation = session.pending
             session.pending = None
@@ -421,7 +447,10 @@ class SmartBoardDimensionPlugin(pcbnew.ActionPlugin):
                     _apply(board, mode, shapes, before, after)
                     sync_dimensions(board, after)
             else:
+                if mode == 'new':
+                    _apply(board, mode, shapes, before, before)
                 sync_dimensions(board, before)
+                session.window.Show()
                 session.window.Raise()
         except DimensionError as exc:
             wx.MessageBox(str(exc), 'スマート基板寸法：変更できません', wx.OK | wx.ICON_WARNING)
@@ -459,4 +488,28 @@ class SmartBoardDimensionPlugin(pcbnew.ActionPlugin):
                           'スマート基板寸法：エラー', wx.OK | wx.ICON_ERROR)
 
 
-SmartBoardDimensionPlugin().register()
+_plugin = SmartBoardDimensionPlugin()
+_plugin.register()
+
+
+def _attach_when_ready():
+    """Only attach UI listeners here; board changes always use ActionPlugin.Run."""
+    global _direct_session, _startup_timer
+    try:
+        from .direct_editor import DirectSession
+        board = pcbnew.GetBoard()
+        if _direct_session is not None and not _direct_session.matches(board):
+            _direct_session.close()
+            _direct_session = None
+        if board is not None and _direct_session is None:
+            _direct_session = DirectSession(board, _plugin.name, show=False)
+    except (RuntimeError, DimensionError):
+        pass  # The editor/menu may not exist yet during plugin discovery.
+    finally:
+        if wx.GetApp() is not None:
+            _startup_timer = wx.CallLater(1500, _attach_when_ready)
+
+
+# A standalone pcbnew interpreter has no wx app; importing never edits a board.
+if hasattr(wx, 'GetApp') and wx.GetApp() is not None:
+    _startup_timer = wx.CallLater(1500, _attach_when_ready)
