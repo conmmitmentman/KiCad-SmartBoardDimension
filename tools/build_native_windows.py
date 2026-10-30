@@ -38,6 +38,8 @@ def stage(build, stock, output):
                     ignore=shutil.ignore_patterns('__pycache__', '*.pdb', '*.pyc'))
     for name in ['internat/ja', 'resources', 'schemas', 'scripting']:
         shutil.copytree(stock / 'share/kicad' / name, app / 'share/kicad' / name)
+    # wxWidgets supplies translations for common dialogs separately from KiCad.
+    shutil.copytree(stock / 'share/locale/ja', app / 'share/locale/ja')
     # Include upstream notices for all bundled dependency packages.
     for path in (deps / 'share').rglob('copyright'):
         target = app / 'licenses/vcpkg' / path.relative_to(deps / 'share')

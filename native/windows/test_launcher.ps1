@@ -6,6 +6,8 @@ $launcher = $assembly.GetType('Launcher', $true)
 $flags = [Reflection.BindingFlags]'NonPublic,Static'
 $verify = $launcher.GetMethod('Verify', $flags)
 $prepare = $launcher.GetMethod('PrepareConfig', $flags)
+$installInto = $launcher.GetMethod('InstallInto', $flags)
+$promote = $launcher.GetMethod('PromoteInstall', $flags)
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) ('sbd-launcher-test-' + [Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($testRoot) | Out-Null
 $utf8 = New-Object Text.UTF8Encoding($false)
@@ -50,5 +52,42 @@ Write-TestFile (Join-Path $stock 'template/fp-lib-table') '(fp_lib_table (versio
 $fresh = Join-Path $testRoot 'fresh'
 $prepare.Invoke($null, [object[]][string[]]@($fresh, $stock))
 Assert-True ((Get-Content -LiteralPath (Join-Path $fresh 'fp-lib-table') -Raw) -match 'Stock') 'Stock libraries not detected'
-Write-Output 'PASS: valid package, tampering/empty/traversal/malformed rejection, Japanese defaults, preserved settings, stock library discovery.'
+
+$package = Join-Path $testRoot 'package'
+$installParent = Join-Path $testRoot 'installations'
+[IO.Directory]::CreateDirectory($package) | Out-Null
+$sourcePayload = Join-Path $package 'payload.txt'
+Write-TestFile $sourcePayload 'clean package'
+$sourceDigest = (Get-FileHash -LiteralPath $sourcePayload -Algorithm SHA256).Hash.ToLowerInvariant()
+Write-TestFile (Join-Path $package 'manifest.sha256') ($sourceDigest + '  payload.txt')
+$installed = $installInto.Invoke($null, [object[]][string[]]@($package, $installParent))
+Assert-True ((Get-Content -LiteralPath (Join-Path $installed 'payload.txt') -Raw) -eq 'clean package') 'Initial install failed'
+$same = $installInto.Invoke($null, [object[]][string[]]@($package, $installParent))
+Assert-True ($same -eq $installed) 'Healthy reinstall changed destination'
+Assert-True (@(Get-ChildItem -LiteralPath $installParent -Directory).Count -eq 1) 'Healthy reinstall created another copy'
+
+Write-TestFile (Join-Path $installed 'payload.txt') 'damaged installed file'
+Write-TestFile (Join-Path $installed 'user-note.txt') 'preserve this file'
+$repaired = $installInto.Invoke($null, [object[]][string[]]@($package, $installParent))
+Assert-True ($repaired -eq $installed) 'Repair changed the shortcut destination'
+Assert-True ((Get-Content -LiteralPath (Join-Path $repaired 'payload.txt') -Raw) -eq 'clean package') 'Repair did not restore package contents'
+$backups = @(Get-ChildItem -LiteralPath $installParent -Directory | Where-Object Name -Match '\.before-repair-')
+Assert-True ($backups.Count -eq 1) 'Repair did not preserve the previous directory'
+Assert-True ((Get-Content -LiteralPath (Join-Path $backups[0].FullName 'user-note.txt') -Raw) -eq 'preserve this file') 'Repair lost a user-created file'
+Assert-True ((Get-Content -LiteralPath (Join-Path $backups[0].FullName 'payload.txt') -Raw) -eq 'damaged installed file') 'Repair overwrote the old copy'
+
+Write-TestFile $sourcePayload 'damaged download'
+Assert-Rejected { $installInto.Invoke($null, [object[]][string[]]@($package, $installParent)) } 'Damaged source package accepted during reinstall'
+Assert-True ((Get-Content -LiteralPath (Join-Path $installed 'payload.txt') -Raw) -eq 'clean package') 'Failed install changed working files'
+
+# Exercise rollback after the existing directory has been moved aside, without deleting anything.
+$rollbackTarget = Join-Path $testRoot 'rollback-target'
+[IO.Directory]::CreateDirectory($rollbackTarget) | Out-Null
+Write-TestFile (Join-Path $rollbackTarget 'marker.txt') 'original copy'
+$missingStage = Join-Path $testRoot 'missing-stage'
+Assert-Rejected { $promote.Invoke($null, [object[]][string[]]@($missingStage, $rollbackTarget)) } 'Promotion from a missing stage unexpectedly succeeded'
+Assert-True ((Get-Content -LiteralPath (Join-Path $rollbackTarget 'marker.txt') -Raw) -eq 'original copy') 'Failed promotion did not restore the previous directory'
+Assert-True (@(Get-ChildItem -LiteralPath $testRoot -Directory | Where-Object Name -Match '^rollback-target\.before-repair-').Count -eq 0) 'Rollback left the original directory at the backup path'
+
+Write-Output 'PASS: package verification, Japanese defaults, preserved settings, stock library discovery, repeat install, repair with backup, failed-source preservation, promotion rollback.'
 Write-Output "Test fixtures: $testRoot"
