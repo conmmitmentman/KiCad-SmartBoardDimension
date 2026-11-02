@@ -18,7 +18,7 @@ SolidCraftのソースコード、画像、アイコン、ロゴ、フォント�
 
 ## 本プロジェクトの構成
 
-- Pythonプラグイン：ルートの [LICENSE](LICENSE)。
+- Windowsランチャー・配布補助ツール：各ファイルの表示とルートの [LICENSE](LICENSE)。
 - KiCad本体へ追加するC++コード：GPL-3.0-or-later。[ライセンス全文](native/LICENSE_GPLv3.txt)。
 - 受領した試作パッチのPython部分：[元のMITライセンス](native/LICENSE_PYTHON.txt)。
 - KiCad本体：公式ソース内のライセンス・著作権表示を保持してください。

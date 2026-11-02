@@ -1,37 +1,34 @@
-name: Test and publish release
-
+name: Test and publish native release
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
   group: release-main
   cancel-in-progress: false
-
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Run unit and package tests
-        run: python3 -m unittest discover -s tests -v
-      - name: Test native patch generation
-        run: python3 -m unittest discover -s native/tests -v
-      - name: Build distributions from this commit
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Test native package and patch generation
         run: |
-          python3 tools/build_release.py
-          python3 tools/build_native_release.py
-      - name: Verify and publish the reviewed distribution
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 tools/publish_release.py
-      - name: Publish native source release
+          python3 -m unittest discover -s tests -v
+          python3 -m unittest discover -s native/tests -v
+      - name: Build and publish native source
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/publish_native_release.py
+      - name: Remove superseded plugin releases (one-time cleanup)
+        if: contains(github.event.head_commit.message, '[native-only cleanup]')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release delete v1.4.0 --cleanup-tag --yes
+          gh release delete v1.3.0 --cleanup-tag --yes
+          gh release edit native-source-v1.0.0 --latest

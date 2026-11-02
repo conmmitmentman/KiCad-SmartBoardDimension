@@ -1,4 +1,4 @@
-"""Publish the tested native source release; preserve existing releases and Python latest."""
+"""Publish the tested native source release; preserve existing releases."""
 import json
 import os
 from pathlib import Path
@@ -39,7 +39,7 @@ def main():
     subprocess.run(['gh', 'release', 'create', tag, str(archive), str(checksum),
                     '--repo', repo, '--target', os.environ['GITHUB_SHA'],
                     '--title', f'KiCad native dimensions — Source v{VERSION}',
-                    '--latest=false', '--notes-file', str(notes)], check=True)
+                    '--latest', '--notes-file', str(notes)], check=True)
 
 
 if __name__ == '__main__':

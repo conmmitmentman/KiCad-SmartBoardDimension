@@ -1,26 +1,20 @@
-# スマート基板寸法 — 標準KiCad用プラグイン
+# スマート基板寸法 — ネイティブ版
 
-通常のKiCad 10のPCBエディタに追加して、寸法から外形を変更するプラグインです。ネイティブ改造版で開発した円・長方形編集をPythonプラグインとして実装し直しました。KiCad本体の置き換えや専用アプリは不要です。
+KiCad 10.0.7を基に、PCB上の寸法の数字から基板外形を直接編集できるようにした非公式のPCBエディタです。このリポジトリではネイティブ版のみを提供します。
 
-## できること
+- 長方形の幅・高さ、円の半径・直径を数値・計算式で編集
+- 数字をクリックして入力、Enterで確定、Escで取消
+- 円の中心固定、接続する寸法の追従、Undo/Redo
+- 日本語のWindows導入・起動画面
 
-- 標準寸法に接続した長方形の幅・高さ、円の半径・直径を数値・計算式で編集
-- PCBを開いた後の編集イベント自動登録を実装。毎回のプラグイン起動を省略
-- `2*15`、`1in+5mm`などの入力、円の中心固定、関連寸法の追従
-- 日本語表示、ロック・不正値・座標上限の事前検査
+## ダウンロードと導入
 
-## 導入状況
+[ネイティブ Source v1.0.0](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/tag/native-source-v1.0.0) はソース配布です。コンパイル済みアプリや一般向けWindowsインストーラーはまだ公開していません。
 
-**[v1.4.0 試験版Release](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/tag/v1.4.0)** の `KiCad10_SmartBoardDimension_v1.4.0_PCM.zip` を取得し、KiCadの「プラグイン＆コンテンツマネージャー → ファイルからインストール」で選択します。ZIPの展開やコマンド入力は不要です。公式PCM一覧には未登録です。
+[導入状況](native/INSTALL_JA.md) / [操作・対応範囲・ビルド・検証記録](native/README.md)
 
-**v1.4.0は実機未確認の試験版です。** 今回はKiCadへアクセスせず、模擬テストと配布物検査で確認しました。自動登録、クリック操作、PCM導入、Undo/Redoの実画面確認は残っています。クリックはKiCadの選択結果を使うため、ネイティブ版の文字だけの判定とは異なります。
+`native/` に実装・サンプル・テスト・Windowsランチャー、`tools/` にネイティブ版の配布生成処理を収録しています。Pythonで書かれたパッチ適用・配布生成ツールもネイティブ版に必要なため含みます。
 
-[日本語の導入・操作ガイド](docs/PLUGIN_1_4_JA.md)
+## ライセンス
 
-対象は円1個、軸に平行な長方形1個、または閉じた直線4本。部品・配線は動かしません。KiCad 10用のSWIG Action Pluginで、KiCad 11以降は対象外です。
-
-## 従来版について
-
-[v1.3.0の説明](docs/PYTHON_PLUGIN_JA.md)と、KiCad本体を改造する[ネイティブ版](native/README.md)も残しています。GitHubのLatestは検証済みのv1.3.0を維持し、v1.4.0は試験版として配布します。
-
-操作感はSolidCraftを参考にした独自実装です。[参考元・ライセンス](ATTRIBUTION.md)を参照してください。
+C++追加コードは [GPL-3.0-or-later](native/LICENSE_GPLv3.txt)。Windowsランチャー等は各ファイルの表示と [LICENSE](LICENSE) に従います。操作感はSolidCraftを参考にした独自実装です。[来歴・参考元](ATTRIBUTION.md)。

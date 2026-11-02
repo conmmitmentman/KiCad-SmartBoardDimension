@@ -1,4 +1,4 @@
-"""Check the native source distribution and its separation from the plugin updater."""
+"""Check the native source distribution and its publication."""
 import hashlib
 from pathlib import Path
 import subprocess
@@ -27,7 +27,7 @@ class NativeReleaseTests(unittest.TestCase):
             self.assertEqual(archive.with_suffix('.zip.sha256').read_text('ascii'),
                              hashlib.sha256(archive.read_bytes()).hexdigest() + '  ' + archive.name + '\n')
 
-    def test_formal_source_release_does_not_replace_python_latest(self):
+    def test_formal_native_source_release_is_latest(self):
         with tempfile.TemporaryDirectory() as td, patch.object(publish, 'ROOT', Path(td)), \
                 patch.dict('os.environ', {'GITHUB_REPOSITORY': 'owner/repo', 'GITHUB_SHA': 'a' * 40}), \
                 patch.object(publish.subprocess, 'run') as run:
@@ -37,7 +37,7 @@ class NativeReleaseTests(unittest.TestCase):
             args = run.call_args_list[-1].args[0]
             self.assertEqual(args[:4], ['gh', 'release', 'create', package.TAG])
             self.assertNotIn('--prerelease', args)
-            self.assertIn('--latest=false', args)
+            self.assertIn('--latest', args)
             self.assertEqual(args[args.index('--target') + 1], 'a' * 40)
 
 
