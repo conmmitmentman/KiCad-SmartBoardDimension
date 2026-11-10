@@ -7,6 +7,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'windows\build_identity.ps1')
+. (Join-Path $PSScriptRoot 'windows\shortcut.ps1')
 
 function Read-LauncherSettings([string]$DataRoot) {
     $path = Join-Path $DataRoot 'build-launcher\settings.json'
@@ -20,20 +21,17 @@ function Read-LauncherSettings([string]$DataRoot) {
 
 function Write-LauncherShortcut([string]$Folder, [string]$Script, [string]$DataRoot, [string]$Editor) {
     [IO.Directory]::CreateDirectory($Folder) | Out-Null
-    $shell = New-Object -ComObject WScript.Shell
-    $link = $shell.CreateShortcut((Join-Path $Folder 'スマート基板寸法（ビルド版）.lnk'))
-    $link.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-    $link.Arguments = '-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $Script + '" -Launch -DataDirectory "' + $DataRoot + '"'
-    $link.WorkingDirectory = Split-Path -Parent $Script
-    $link.Description = '寸法編集を追加したビルド済みPCBエディタを起動'
-    $link.IconLocation = $Editor + ',0'
-    $link.Save()
+    Initialize-UnicodeShortcut
+    $file = Join-Path $Folder 'スマート基板寸法（ビルド版）.lnk'
+    $target = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    $arguments = '-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $Script + '" -Launch -DataDirectory "' + $DataRoot + '"'
+    [SmartBoardDimensionSetup.Shortcuts]::Save($file, $target, $arguments, (Split-Path -Parent $Script), $Editor)
 }
 
 function Install-BuildLauncher([string]$BuildDirectory, [string]$SourceDirectory, [string]$DataRoot, [string[]]$ShortcutFolders) {
     # Feature validation happens before writing settings or shortcuts.
     $build = Get-NativeBuild $BuildDirectory
-    $payload = @('setup_windows.ps1', 'launch_windows.ps1', 'windows\build_identity.ps1', 'examples\circle.kicad_pcb')
+    $payload = @('setup_windows.ps1', 'launch_windows.ps1', 'windows\build_identity.ps1', 'windows\shortcut.ps1', 'examples\circle.kicad_pcb')
     foreach ($name in $payload) {
         if (!(Test-Path -LiteralPath (Join-Path $SourceDirectory $name) -PathType Leaf)) { throw "初回設定のファイルが不足しています: $name。ZIP全体を展開し直してください。" }
     }

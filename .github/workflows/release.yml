@@ -9,7 +9,10 @@ concurrency:
   group: release-main
   cancel-in-progress: false
 jobs:
+  windows-setup:
+    uses: ./.github/workflows/windows-launcher.yml
   release:
+    needs: windows-setup
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -23,3 +26,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/publish_native_release.py
+

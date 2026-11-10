@@ -3,7 +3,7 @@
 **KiCad 10.0.7 の PCB エディタで、寸法の数字をクリックして基板外形を数値・計算式で変更する非公式ネイティブ版**です。KiCad 本体のソースに機能を追加し、ビルドして使用します。
 
 > [!IMPORTANT]
-> **2026年11月10日現在、一般向け Windows インストーラー（`Install.exe`）とコンパイル済みアプリは未公開です。** 公開中の **Source v1.0.1** はソース配布です。ZIP を展開するだけでは動作せず、KiCad 本体のソースへのパッチ適用とビルドが必要です。
+> **2026年11月10日現在、一般向け Windows インストーラー（`Install.exe`）とコンパイル済みアプリは未公開です。** 公開中の **Source v1.0.2** はソース配布です。ZIP を展開するだけでは動作せず、KiCad 本体のソースへのパッチ適用とビルドが必要です。
 >
 > 現在使うには **KiCad 10.0.7 のソースにパッチを適用し、Windows でビルド**してください。通常版 KiCad にそのまま機能を追加するインストーラーは提供していません。
 
@@ -22,11 +22,11 @@
 
 ## 2. ダウンロード：どのファイルを選ぶ？
 
-**現在公開中：ネイティブ Source v1.0.1**
+**現在公開中：ネイティブ Source v1.0.2**
 
-- [リリースページ](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/tag/native-source-v1.0.1)
-- [ソース ZIP（KiCad10_NativeDrivingDimension_Source_v1.0.1.zip）](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/download/native-source-v1.0.1/KiCad10_NativeDrivingDimension_Source_v1.0.1.zip)
-- [ZIP の SHA256 チェックサム](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/download/native-source-v1.0.1/KiCad10_NativeDrivingDimension_Source_v1.0.1.zip.sha256)
+- [リリースページ](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/tag/native-source-v1.0.2)
+- [ソース ZIP（KiCad10_NativeDrivingDimension_Source_v1.0.2.zip）](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/download/native-source-v1.0.2/KiCad10_NativeDrivingDimension_Source_v1.0.2.zip)
+- [ZIP の SHA256 チェックサム](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/download/native-source-v1.0.2/KiCad10_NativeDrivingDimension_Source_v1.0.2.zip.sha256)
 
 **この ZIP には `Install.exe` は含まれていません。** 現在の導入方法は次の「3. Windows でソースから導入する」です。
 
@@ -38,8 +38,8 @@ ZIP と `.zip.sha256` ファイルを同じフォルダーに保存し、PowerSh
 
 ```powershell
 Set-Location "$env:USERPROFILE\Downloads"
-Get-FileHash ".\KiCad10_NativeDrivingDimension_Source_v1.0.1.zip" -Algorithm SHA256
-Get-Content ".\KiCad10_NativeDrivingDimension_Source_v1.0.1.zip.sha256"
+Get-FileHash ".\KiCad10_NativeDrivingDimension_Source_v1.0.2.zip" -Algorithm SHA256
+Get-Content ".\KiCad10_NativeDrivingDimension_Source_v1.0.2.zip.sha256"
 ```
 
 表示された SHA256 の値と、チェックサムファイル冒頭の文字列が一致することを確認してください。ファイルを別の場所に保存した場合はパスを読み替えてください。

@@ -22,11 +22,10 @@ $stable = Join-Path $data 'build-launcher'
 foreach ($name in @('setup_windows.ps1', 'launch_windows.ps1', 'windows/build_identity.ps1', 'examples/circle.kicad_pcb')) {
     Assert-True (Test-Path -LiteralPath (Join-Path $stable $name)) "Missing stable payload: $name"
 }
-$shell = New-Object -ComObject WScript.Shell
-$link = $shell.CreateShortcut((Join-Path $shortcuts 'スマート基板寸法（ビルド版）.lnk'))
-Assert-True ($link.Arguments.Contains('"' + (Join-Path $stable 'setup_windows.ps1') + '"')) 'Shortcut script path not quoted'
-Assert-True ($link.Arguments.Contains('"' + $data + '"')) 'Shortcut data path not quoted'
-Assert-True ($link.Arguments.Contains('-Launch')) 'Shortcut would rerun first setup'
+$shortcutArgs = [SmartBoardDimensionSetup.Shortcuts]::Arguments((Join-Path $shortcuts 'スマート基板寸法（ビルド版）.lnk'))
+Assert-True ($shortcutArgs.Contains('"' + (Join-Path $stable 'setup_windows.ps1') + '"')) 'Shortcut script path not quoted'
+Assert-True ($shortcutArgs.Contains('"' + $data + '"')) 'Shortcut data path not quoted'
+Assert-True ($shortcutArgs.Contains('-Launch')) 'Shortcut would rerun first setup'
 
 # Set a genuine-looking user config and repeat setup; preserve it and the sample.
 [IO.Directory]::CreateDirectory($settings.config_directory) | Out-Null

@@ -6,7 +6,7 @@ import argparse
 import hashlib
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.0.1'
+VERSION = '1.0.2'
 TAG = 'native-source-v' + VERSION
 FILES = (
     'README.md', 'README_PROTOTYPE_JA.md', 'INSTALL_JA.md', 'BUILD_WINDOWS_JA.md',
@@ -19,7 +19,7 @@ FILES = (
     'tests/test_patch.py',
     'launch_windows.ps1',
     'setup_windows.ps1', '初回設定.cmd',
-    'windows/build_identity.ps1', 'windows/test_build_identity.ps1', 'windows/test_build_setup.ps1',
+    'windows/build_identity.ps1', 'windows/shortcut.ps1', 'windows/test_build_identity.ps1', 'windows/test_build_setup.ps1',
     'examples/circle.kicad_pcb',
 )
 

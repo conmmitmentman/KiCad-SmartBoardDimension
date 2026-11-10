@@ -14,7 +14,7 @@ PCB上の寸法の数字をクリックして、長方形の幅・高さや円�
 
 ### ビルド済みなら、初回設定は3ステップ
 
-1. [Source v1.0.1のRelease](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/tag/native-source-v1.0.1)から **`KiCad10_NativeDrivingDimension_Source_v1.0.1.zip`** をダウンロードし、**ZIP全体を展開**します。
+1. [Source v1.0.2のRelease](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/tag/native-source-v1.0.2)から **`KiCad10_NativeDrivingDimension_Source_v1.0.2.zip`** をダウンロードし、**ZIP全体を展開**します。
 2. 展開先の **`native/初回設定.cmd`** をダブルクリックし、「ビルド先を選ぶ」でネイティブ版のビルドフォルダーを選びます。例：`C:\dev\kicad\build\msvc-win64-release`。
 3. 「設定済み」と表示されたら完了です。「円のサンプルを試す」または「保存済みの基板を開く」を選びます。
 
