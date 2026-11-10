@@ -1,4 +1,6 @@
-# PCB上で編集するネイティブ寸法 — Source v1.0.0
+# PCB上で編集するネイティブ寸法 — Source v1.0.1
+
+ビルド済みの本体は、[初回設定](INSTALL_JA.md)を一度行うと次回から専用アイコンで起動できます。初回の本体ビルドは [Windowsビルド手順](BUILD_WINDOWS_JA.md) を参照してください。v1.0.1では導入・起動補助を追加し、本体の寸法機能はv1.0.0から変更していません。
 
 KiCad 10.0.7 の標準PCBエディタに、寸法の数字をクリックして数値・計算式を入力する機能を追加するC++ソースパッチです。Pythonプラグインのインストーラーとは別のものです。
 
@@ -97,3 +99,4 @@ qa_pcbnew.exe --run_test=SmartBoardDrivingDimensions,SmartBoardDrivingCircles --
 操作感は [SolidCraft](https://github.com/tangency-labs/solidcraft) を参考にした独自実装です。コード・画像・拘束ソルバーは取り込んでいません。SolidCraftの公式・提携・推奨製品ではありません。詳しくは [参考元・ライセンス](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/blob/main/ATTRIBUTION.md) を参照してください。
 
 C++追加コードはGPL-3.0-or-later（[全文](LICENSE_GPLv3.txt)）。KiCad本体のライセンスは元のソースに従います。パッチ生成用Pythonの元のライセンスは [LICENSE_PYTHON.txt](LICENSE_PYTHON.txt) に収録しています。
+

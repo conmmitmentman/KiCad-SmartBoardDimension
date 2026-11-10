@@ -6,10 +6,10 @@ import argparse
 import hashlib
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 TAG = 'native-source-v' + VERSION
 FILES = (
-    'README.md', 'README_PROTOTYPE_JA.md', 'INSTALL_JA.md',
+    'README.md', 'README_PROTOTYPE_JA.md', 'INSTALL_JA.md', 'BUILD_WINDOWS_JA.md',
     'LICENSE_PYTHON.txt', 'LICENSE_GPLv3.txt',
     'native_patch/apply_native_patch.py',
     'native_patch/smart_board_driving_dimension_impl.h',
@@ -18,6 +18,8 @@ FILES = (
     'native_patch/test_smart_board_driving_dimension.cpp',
     'tests/test_patch.py',
     'launch_windows.ps1',
+    'setup_windows.ps1', '初回設定.cmd',
+    'windows/build_identity.ps1', 'windows/test_build_identity.ps1', 'windows/test_build_setup.ps1',
     'examples/circle.kicad_pcb',
 )
 
@@ -31,14 +33,15 @@ def build(output_dir):
               'Applying this patch requires a separate KiCad 10.0.7 source checkout.\n')
     with ZipFile(target, 'w', ZIP_DEFLATED) as z:
         z.writestr('START_HERE.txt', notice)
-        for name in ('ATTRIBUTION.md', 'LICENSE'):
+        z.write(ROOT / 'README.md', 'README.md')
+        for name in ('ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md'):
             z.write(ROOT / name, name)
         for name in FILES:
             z.write(ROOT / 'native' / name, 'native/' + name)
     with ZipFile(target) as z:
         if z.testzip() is not None:
             raise RuntimeError('Archive integrity check failed')
-        for name in ('ATTRIBUTION.md', 'LICENSE'):
+        for name in ('ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md'):
             if z.read(name) != (ROOT / name).read_bytes():
                 raise RuntimeError('Archive content mismatch: ' + name)
         for name in FILES:
@@ -53,3 +56,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output-dir', type=Path, default=ROOT / 'dist')
     print(build(parser.parse_args().output_dir))
+
