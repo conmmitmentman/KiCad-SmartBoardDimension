@@ -23,12 +23,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/publish_native_release.py
-      - name: Remove superseded plugin releases (one-time cleanup)
-        if: contains(github.event.head_commit.message, '[native-only cleanup]')
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh release delete v1.4.0 --cleanup-tag --yes
-          gh release delete v1.3.0 --cleanup-tag --yes
-          gh release edit native-source-v1.0.0 --latest
