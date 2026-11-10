@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VERSION = '1.0.0'
 TAG = 'native-source-v' + VERSION
 FILES = (
-    'README.md', 'README_PROTOTYPE_JA.md',
+    'README.md', 'README_PROTOTYPE_JA.md', 'INSTALL_JA.md',
     'LICENSE_PYTHON.txt', 'LICENSE_GPLv3.txt',
     'native_patch/apply_native_patch.py',
     'native_patch/smart_board_driving_dimension_impl.h',
