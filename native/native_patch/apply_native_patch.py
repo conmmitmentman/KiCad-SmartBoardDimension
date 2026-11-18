@@ -158,7 +158,11 @@ def main():
     if len(crate_files) < 3:
         raise RuntimeError('Rust engine source is incomplete')
     for path in crate_files:
-        outputs[rust_target / path.relative_to(crate)] = path.read_text(encoding='utf-8')
+        content = path.read_text(encoding='utf-8')
+        if path.name == 'Cargo.toml':
+            # The copy in KiCad builds independently of any surrounding Cargo workspace.
+            content += '\n[workspace]\n'
+        outputs[rust_target / path.relative_to(crate)] = content
     outputs[rust_target / 'kicad.cmake'] = (payload / 'smart_board_rust.cmake').read_text(encoding='utf-8')
     root_cmake = args.kicad_source / 'CMakeLists.txt'
     cmake_text = root_cmake.read_text(encoding='utf-8')

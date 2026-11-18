@@ -69,6 +69,7 @@ class PatcherTest(unittest.TestCase):
             self.assertTrue((source_dir / 'smart_board_driving_circle.h').is_file())
             self.assertTrue((source_dir / 'smartboard-rust-core/src/lib.rs').is_file())
             self.assertTrue((source_dir / 'smartboard-rust-core/include/sbd_rust.h').is_file())
+            self.assertIn('[workspace]', (source_dir / 'smartboard-rust-core/Cargo.toml').read_text())
             self.assertIn('smartboard-rust-core/kicad.cmake', (base / 'CMakeLists.txt').read_text())
 
     def test_missing_selection_anchor_leaves_sources_untouched(self):
