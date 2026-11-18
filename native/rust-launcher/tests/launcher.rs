@@ -79,13 +79,13 @@ fn first_run_config_and_user_sample_are_preserved() {
     let config = temp.path().join("config");
     let stock = temp.path().join("stock");
     write(&stock.join("template/fp-lib-table"), b"(fp_lib_table (version 7))");
-    prepare_config(&config, &stock, Path::new("test-pythonw.exe")).unwrap();
+    prepare_config(&config, &stock, Path::new("test-pythonw.exe"), Language::Japanese).unwrap();
     let initial: serde_json::Value = serde_json::from_slice(&fs::read(config.join("kicad_common.json")).unwrap()).unwrap();
     assert_eq!(initial["system"]["language"], "日本語");
     assert_eq!(initial["api"]["interpreter_path"], "test-pythonw.exe");
     fs::write(config.join("kicad_common.json"), b"custom settings").unwrap();
     fs::write(config.join("fp-lib-table"), b"custom libraries").unwrap();
-    prepare_config(&config, &stock, Path::new("new-python.exe")).unwrap();
+    prepare_config(&config, &stock, Path::new("new-python.exe"), Language::English).unwrap();
     assert_eq!(fs::read(config.join("kicad_common.json")).unwrap(), b"custom settings");
     assert_eq!(fs::read(config.join("fp-lib-table")).unwrap(), b"custom libraries");
     let sample = sample_from_bytes(b"original sample", temp.path()).unwrap();
@@ -129,12 +129,15 @@ fn command_uses_unicode_argument_and_private_environment_without_execution() {
     write(&board, b"test board");
     let original_path = std::env::var_os("PATH");
     let layout = Layout::Build(root.clone());
-    let command = layout.command(Some(&board), &temp.path().join("data"), &temp.path().join("stock"), &temp.path().join("system")).unwrap();
+    let command = layout.command(Some(&board), &temp.path().join("data"), &temp.path().join("stock"), &temp.path().join("system"), Language::English).unwrap();
     assert_eq!(command.get_args().collect::<Vec<_>>(), vec![board.as_os_str()]);
     assert_eq!(command_environment(&command, "KICAD_RUN_FROM_BUILD_DIR").unwrap(), "1");
     assert_eq!(command_environment(&command, "PYTHONHOME").unwrap(), root.join("vcpkg_installed/x64-windows/tools/python3"));
     assert_eq!(std::env::var_os("PATH"), original_path);
-    let blank = layout.command(None, &temp.path().join("data"), &temp.path().join("stock"), &temp.path().join("system")).unwrap();
+    let config = temp.path().join("data/config/10.0/kicad_common.json");
+    let settings: serde_json::Value = serde_json::from_slice(&fs::read(config).unwrap()).unwrap();
+    assert_eq!(settings["system"]["language"], "English");
+    let blank = layout.command(None, &temp.path().join("data"), &temp.path().join("stock"), &temp.path().join("system"), Language::English).unwrap();
     assert_eq!(blank.get_args().count(), 0);
 }
 
@@ -160,4 +163,17 @@ fn manifest_cannot_follow_a_symbolic_link() {
     fs::remove_file(source.join("SmartBoardDimension.exe")).unwrap();
     symlink(&external, source.join("SmartBoardDimension.exe")).unwrap();
     assert!(verify_payload(&source).is_err());
+}
+
+#[test]
+fn language_selection_survives_restarts_and_can_switch_back() {
+    let temp = TempDir::new().unwrap();
+    let data = temp.path().join("launcher");
+    assert_eq!(Language::load(&data), Language::Japanese);
+    let changed = Language::load(&data).other();
+    changed.save(&data).unwrap();
+    assert_eq!(Language::load(&data), Language::English);
+    Language::load(&data).other().save(&data).unwrap();
+    assert_eq!(Language::load(&data), Language::Japanese);
+    assert_eq!(fs::read_dir(data).unwrap().count(), 1);
 }

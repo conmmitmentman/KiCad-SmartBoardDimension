@@ -1,9 +1,11 @@
 # Rust版の構成とビルド
 
+**日本語** · [English](RUST_MIGRATION_EN.md)
+
 ## 変更した範囲
 
 - `rust-core/`：数式・数値計算と寸法の幾何処理をRustの静的ライブラリにしました。
-- `rust-launcher/`：日本語の起動画面、配布物の検証、導入・修復、ビルド先の登録、専用ショートカットをRustで実装しました。C#やPowerShellを呼び出して動かす構成ではありません。
+- `rust-launcher/`：日英切り替え付きの起動画面、配布物の検証、導入・修復、ビルド先の登録、専用ショートカットをRustで実装しました。C#やPowerShellを呼び出して動かす構成ではありません。
 - `native_patch/`：KiCadの画面・基板オブジェクト・Undoと接続するC++部分を残し、RustをC ABIで呼び出します。
 
 **KiCad本体はC++です。この変更はKiCad全体をRustへ書き直したものではありません。** パッチ適用と配布フォルダー生成の補助スクリプトはPython、従来の起動・初回設定スクリプトは互換用として残ります。
@@ -41,12 +43,14 @@ python native/native_patch/apply_native_patch.py C:\dev\kicad --with-tests
 
 ```powershell
 cmake --preset msvc-win64-release -DKICAD_BUILD_QA_TESTS=ON
-cmake --build --preset win64-release --target pcbnew qa_pcbnew bitmap_archive_build --parallel 4
+cmake --build --preset win64-release --target pcbnew qa_pcbnew bitmap_archive_build i18n --parallel 4
 ```
 
-この段階のコマンドはKiCadソースのルートで実行します。**Rustへ移行した今回のKiCad全体の再ビルド・実画面動作は未検証です。** 以前のC++版のGUI検証記録を、そのままRust統合版の成功記録として扱うことはできません。
+この段階のコマンドはKiCadソースのルートで実行します。`i18n` は日本語を含むKiCad標準画面の翻訳をビルドします。**Rustへ移行した今回のKiCad全体の再ビルド・実画面動作は未検証です。** 以前のC++版のGUI検証記録を、そのままRust統合版の成功記録として扱うことはできません。
 
 ## 起動の登録は1回だけ
+
+起動画面の右上の **English** または **日本語** で表示言語を切り替えます。この選択は保存されます。PCB側の初期設定がある場合は、PCBエディタの **Preferences → Set Language**（設定メニュー）で表示言語を切り替えます。寸法入力欄はPCB側で選んだ言語に従います。
 
 `smartboard-launcher.exe` を開き、「ネイティブ版のビルド先を登録／変更」でビルドフォルダーを選びます。通常版やパッチ適用前の本体は、バイナリ内の寸法機能の識別文字列を確認して拒否します。この検査はデジタル署名ではありません。
 

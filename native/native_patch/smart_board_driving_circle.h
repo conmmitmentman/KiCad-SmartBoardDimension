@@ -28,13 +28,23 @@ inline bool collectCircle( BOARD* board, CIRCLE_GEOMETRY& out, wxString& message
         if( item->GetLayer() != Edge_Cuts ) continue;
         auto* shape = dynamic_cast<PCB_SHAPE*>( item );
         if( out.shape || !shape || shape->GetShape() != SHAPE_T::CIRCLE )
-        { message = wxS( "円形外形はEdge.Cutsの円1個に対応します。" ); return false; }
+        {
+            message = dimensionText(
+                wxS( "Use a single circle on Edge.Cuts." ),
+                wxS( "円形外形はEdge.Cutsの円1個に対応します。" ) );
+            return false;
+        }
         out.shape = shape;
     }
     if( !out.shape ) return false;
     SbdCircle geometry{};
     if( sbd_circle_from_points( rustPoint( out.shape->GetStart() ), rustPoint( out.shape->GetEnd() ), &geometry ) != SBD_OK )
-    { message = wxS( "円の直径は0.01～2000 mm、円全体の座標は±2000 mm以内にしてください。" ); return false; }
+    {
+        message = dimensionText(
+            wxS( "Use a circle with a diameter between 0.01 and 2000 mm, entirely within the ±2000 mm coordinate range." ),
+            wxS( "円の直径は0.01～2000 mm、円全体の座標は±2000 mm以内にしてください。" ) );
+        return false;
+    }
     out.center = nativePoint( geometry.center );
     out.radius = geometry.radius;
     return true;
@@ -53,17 +63,32 @@ inline bool resizeCircle( BOARD* board, PCB_DIMENSION_BASE* edited, double targe
                           BOARD_COMMIT& commit, wxString& message )
 {
     if( !std::isfinite( targetMM ) || targetMM < 0.01 || targetMM > 1000.0 )
-    { message = wxS( "寸法は0.01～1000 mm以内で入力してください。" ); return false; }
+    {
+        message = dimensionText(
+            wxS( "Enter a dimension between 0.01 and 1000 mm." ),
+            wxS( "寸法は0.01～1000 mm以内で入力してください。" ) );
+        return false;
+    }
     CIRCLE_GEOMETRY circle;
     if( !collectCircle( board, circle, message ) ) return false;
     const int factor = circleDimensionFactor( circle, edited );
     if( !factor )
-    { message = wxS( "半径寸法は中心と円周、直径寸法は円周上の向かい合う2点に合わせてください。" ); return false; }
+    {
+        message = dimensionText(
+            wxS( "For a radius, snap to the center and circumference. For a diameter, snap to opposite points on the circle." ),
+            wxS( "半径寸法は中心と円周、直径寸法は円周上の向かい合う2点に合わせてください。" ) );
+        return false;
+    }
     double newRadius = 0;
     if( sbd_circle_target_radius( circle.rustGeometry(), factor, targetMM, &newRadius ) != SBD_OK )
-    { message = wxS( "変更後の円が座標範囲±2000 mmを超えます。" ); return false; }
+    {
+        message = dimensionText(
+            wxS( "The resized circle exceeds the ±2000 mm coordinate range." ),
+            wxS( "変更後の円が座標範囲±2000 mmを超えます。" ) );
+        return false;
+    }
     if( circle.shape->IsLocked() || edited->IsLocked() )
-    { message = wxS( "円または寸法がロックされています。" ); return false; }
+    { message = dimensionText( wxS( "The circle or dimension is locked." ), wxS( "円または寸法がロックされています。" ) ); return false; }
     struct CHANGE { PCB_DIMENSION_BASE* dim; VECTOR2I start, end; };
     std::vector<CHANGE> changes;
     for( BOARD_ITEM* item : board->Drawings() )
@@ -84,9 +109,14 @@ inline bool resizeCircle( BOARD* board, PCB_DIMENSION_BASE* edited, double targe
         else continue;
         if( dim != edited && start == dim->GetStart() && end == dim->GetEnd() ) continue;
         if( !safeDimensionSpan( start, end ) )
-        { message = wxS( "追従する寸法の長さが2000 mmを超えます。" ); return false; }
+        {
+            message = dimensionText(
+                wxS( "A linked dimension would exceed 2000 mm." ),
+                wxS( "追従する寸法の長さが2000 mmを超えます。" ) );
+            return false;
+        }
         if( dim->IsLocked() )
-        { message = wxS( "追従する寸法がロックされています。" ); return false; }
+        { message = dimensionText( wxS( "A linked dimension is locked." ), wxS( "追従する寸法がロックされています。" ) ); return false; }
         changes.push_back( { dim, start, end } );
     }
     // Everything above is read-only: invalid requests cannot leave a half-edited board.

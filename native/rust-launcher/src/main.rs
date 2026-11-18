@@ -8,9 +8,7 @@ mod windows_ui;
 
 #[cfg(windows)]
 fn main() {
-    if let Err(error) = windows_ui::run() {
-        windows_ui::show_error(None, &error);
-    }
+    windows_ui::start();
 }
 
 #[cfg(not(windows))]

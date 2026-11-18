@@ -12,10 +12,21 @@
 #include <board_commit.h>
 #include <pcb_dimension.h>
 #include <pcb_shape.h>
+#include <pgm_base.h>
+#include <wx/intl.h>
 #include "smartboard-rust-core/include/sbd_rust.h"
 
 namespace SMART_BOARD_NATIVE
 {
+inline wxString dimensionText( const wxString& english, const wxString& japanese )
+{
+    const wxString language = Pgm().GetLanguageTag();
+    if( language.IsEmpty() )
+        return wxLocale::GetSystemLanguage() == wxLANGUAGE_JAPANESE ? japanese : english;
+
+    return ( language == wxS( "ja" ) || language.StartsWith( wxS( "ja-" ) ) ) ? japanese : english;
+}
+
 inline SbdPoint rustPoint( const VECTOR2I& p ) { return { p.x, p.y }; }
 inline VECTOR2I nativePoint( SbdPoint p ) { return { p.x, p.y }; }
 struct RECT_GEOMETRY
@@ -54,10 +65,17 @@ inline bool collectRectangle( BOARD* board, RECT_GEOMETRY& out, wxString& messag
     {
         if( item->GetLayer() != Edge_Cuts ) continue;
         auto* shape = dynamic_cast<PCB_SHAPE*>( item );
-        if( !shape ) { message = wxS( "Edge.Cutsに対応しない図形があります。" ); return false; }
+        if( !shape )
+        {
+            message = dimensionText( wxS( "Edge.Cuts contains an unsupported item." ),
+                                     wxS( "Edge.Cutsに対応しない図形があります。" ) );
+            return false;
+        }
         if( out.shapeCount == out.shapes.size() )
         {
-            message = wxS( "軸に平行な長方形1個、または接続した直線4本に対応します。" );
+            message = dimensionText(
+                    wxS( "Use one axis-aligned rectangle or four connected straight segments." ),
+                    wxS( "軸に平行な長方形1個、または接続した直線4本に対応します。" ) );
             return false;
         }
         out.shapes[out.shapeCount++] = shape;
@@ -65,7 +83,9 @@ inline bool collectRectangle( BOARD* board, RECT_GEOMETRY& out, wxString& messag
     const bool rectangle = out.shapeCount == 1 && out.shapes[0]->GetShape() == SHAPE_T::RECTANGLE;
     if( !rectangle && out.shapeCount != 4 )
     {
-        message = wxS( "軸に平行な長方形1個、または接続した直線4本に対応します。" );
+        message = dimensionText(
+                wxS( "Use one axis-aligned rectangle or four connected straight segments." ),
+                wxS( "軸に平行な長方形1個、または接続した直線4本に対応します。" ) );
         return false;
     }
     std::array<SbdPoint, 8> points{};
@@ -74,21 +94,28 @@ inline bool collectRectangle( BOARD* board, RECT_GEOMETRY& out, wxString& messag
     {
         const auto corners = out.shapes[0]->GetRectCorners();
         if( corners.size() != 4 )
-        { message = wxS( "軸に平行な長方形が必要です。" ); return false; }
+        { message = dimensionText( wxS( "An axis-aligned rectangle is required." ), wxS( "軸に平行な長方形が必要です。" ) ); return false; }
         for( const VECTOR2I& p : corners ) points[pointCount++] = rustPoint( p );
     }
     else
         for( PCB_SHAPE* shape : out.shapes )
         {
             if( shape->GetShape() != SHAPE_T::SEGMENT )
-            { message = wxS( "円弧・多角形を含む外形には対応していません。" ); return false; }
+            {
+                message = dimensionText(
+                    wxS( "Outlines with arcs or polygons are unsupported." ),
+                    wxS( "円弧・多角形を含む外形には対応していません。" ) );
+                return false;
+            }
             points[pointCount++] = rustPoint( shape->GetStart() );
             points[pointCount++] = rustPoint( shape->GetEnd() );
         }
     SbdRect geometry{};
     if( sbd_rect_from_vertices( points.data(), pointCount, rectangle ? 0 : 1, &geometry ) != SBD_OK )
     {
-        message = wxS( "座標範囲±2000 mm・幅高さ0.01～2000 mmの、隙間や重複のない長方形が必要です。" );
+        message = dimensionText(
+                wxS( "Use a rectangle without gaps or overlaps, with coordinates within ±2000 mm and sides between 0.01 and 2000 mm." ),
+                wxS( "座標範囲±2000 mm・幅高さ0.01～2000 mmの、隙間や重複のない長方形が必要です。" ) );
         return false;
     }
     out.left = geometry.left; out.right = geometry.right;
@@ -115,16 +142,31 @@ inline bool resizeRectangle( BOARD* board, PCB_DIMENSION_BASE* edited, double ta
                              BOARD_COMMIT& commit, wxString& message )
 {
     if( !std::isfinite( targetMM ) || targetMM < 0.01 || targetMM > 1000.0 )
-    { message = wxS( "寸法は0.01～1000 mm以内で入力してください。" ); return false; }
+    {
+        message = dimensionText(
+            wxS( "Enter a dimension between 0.01 and 1000 mm." ),
+            wxS( "寸法は0.01～1000 mm以内で入力してください。" ) );
+        return false;
+    }
     RECT_GEOMETRY rect;
     if( !collectRectangle( board, rect, message ) ) return false;
     int axis = dimensionAxis( rect, edited );
     if( axis < 0 )
-    { message = wxS( "寸法の両端を長方形の隣り合う2つの角に合わせてください。" ); return false; }
+    {
+        message = dimensionText(
+            wxS( "Snap the dimension endpoints to adjacent corners of the rectangle." ),
+            wxS( "寸法の両端を長方形の隣り合う2つの角に合わせてください。" ) );
+        return false;
+    }
     bool width = axis == 0;
     int32_t newMax = 0;
     if( sbd_rect_target_max( { rect.left, rect.right, rect.top, rect.bottom }, axis, targetMM, &newMax ) != SBD_OK )
-    { message = wxS( "変更後の外形が座標範囲±2000 mmを超えます。" ); return false; }
+    {
+        message = dimensionText(
+            wxS( "The resized outline exceeds the ±2000 mm coordinate range." ),
+            wxS( "変更後の外形が座標範囲±2000 mmを超えます。" ) );
+        return false;
+    }
     std::vector<PCB_DIMENSION_BASE*> dimensions;
     for( BOARD_ITEM* item : board->Drawings() )
     {
@@ -133,16 +175,31 @@ inline bool resizeRectangle( BOARD* board, PCB_DIMENSION_BASE* edited, double ta
             && rect.findCorner( dim->GetEnd() ) < 0 ) ) continue;
         if( !safeDimensionSpan( rect.moveCorner( dim->GetStart(), width, newMax ),
                                 rect.moveCorner( dim->GetEnd(), width, newMax ) ) )
-        { message = wxS( "追従する寸法の長さが2000 mmを超えます。" ); return false; }
+        {
+            message = dimensionText(
+                wxS( "A linked dimension would exceed 2000 mm." ),
+                wxS( "追従する寸法の長さが2000 mmを超えます。" ) );
+            return false;
+        }
         if( dim->IsLocked() && ( dim == edited
             || rect.moveCorner( dim->GetStart(), width, newMax ) != dim->GetStart()
             || rect.moveCorner( dim->GetEnd(), width, newMax ) != dim->GetEnd() ) )
-        { message = wxS( "追従する寸法がロックされています。先にロックを解除してください。" ); return false; }
+        {
+            message = dimensionText(
+                wxS( "Unlock the linked dimension before editing." ),
+                wxS( "追従する寸法がロックされています。先にロックを解除してください。" ) );
+            return false;
+        }
         dimensions.push_back( dim );
     }
     for( std::size_t i = 0; i < rect.shapeCount; ++i )
         if( rect.shapes[i]->IsLocked() )
-        { message = wxS( "基板外形がロックされています。先にロックを解除してください。" ); return false; }
+        {
+            message = dimensionText(
+                wxS( "Unlock the board outline before editing." ),
+                wxS( "基板外形がロックされています。先にロックを解除してください。" ) );
+            return false;
+        }
     for( std::size_t i = 0; i < rect.shapeCount; ++i )
     {
         PCB_SHAPE* shape = rect.shapes[i];

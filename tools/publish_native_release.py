@@ -28,15 +28,17 @@ def main():
         '**正式なソース配布版です。コンパイル済みアプリ・インストーラーは含みません。**\n\n'
         '寸法計算とWindowsランチャーをRustで実装しました。'
         '起動画面はWindows標準のコントロールを使い、PCBエディタの起動後に終了します。'
-        '本体のビルド手順は同梱のnative/RUST_MIGRATION_JA.mdを参照してください。\n\n'
+        '起動画面で日本語と英語を切り替えられます。PCBの寸法表示はKiCadの言語設定に従います。\n\n'
         '標準寸法の数字から数値・計算式を入力すると、長方形の幅・高さと円の半径・直径を変更できます。'
         'PCBエディタとの接続はC++で実装し、KiCad本体をビルドして使用します。\n\n'
         'Rust単体テストと人工基板を使ったC++連携テストを実施しました。'
         'このRust版を組み込んだKiCad本体のビルドと画面操作は未確認です。\n\n'
         '操作感はSolidCraftを参考にした独自実装です。コードや画像は取り込んでいません。'
         'SolidCraftの公式・提携・推奨製品ではありません。詳細は同梱のATTRIBUTION.mdに記載しています。\n\n'
-        f'導入方法は [最初のREADME](https://github.com/{repo}/blob/'
-        f'{os.environ["GITHUB_SHA"]}/README.md) を参照してください。\n',
+        f'導入方法：[日本語](https://github.com/{repo}/blob/{os.environ["GITHUB_SHA"]}/README.md) / '
+        f'[English](https://github.com/{repo}/blob/{os.environ["GITHUB_SHA"]}/README.en.md)\n\n'
+        'This release contains source code. Build the Windows editor and launcher before use. '
+        'Switch the launcher using English or 日本語. Native dimension messages follow the PCB Editor language.\n',
         encoding='utf-8')
     subprocess.run(['gh', 'release', 'create', tag, str(archive), str(checksum),
                     '--repo', repo, '--target', os.environ['GITHUB_SHA'],
