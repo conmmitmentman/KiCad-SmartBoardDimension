@@ -6,15 +6,21 @@ import argparse
 import hashlib
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.0.2'
+VERSION = '1.1.0'
 TAG = 'native-source-v' + VERSION
 FILES = (
-    'README.md', 'README_PROTOTYPE_JA.md', 'INSTALL_JA.md', 'BUILD_WINDOWS_JA.md',
+    'README.md', 'README_PROTOTYPE_JA.md', 'INSTALL_JA.md', 'BUILD_WINDOWS_JA.md', 'RUST_MIGRATION_JA.md',
     'LICENSE_PYTHON.txt', 'LICENSE_GPLv3.txt',
     'native_patch/apply_native_patch.py',
     'native_patch/smart_board_driving_dimension_impl.h',
     'native_patch/smart_board_driving_dimension_ui.h',
     'native_patch/smart_board_driving_circle.h',
+    'native_patch/smart_board_rust.cmake',
+    'rust-core/Cargo.toml', 'rust-core/README.md', 'rust-core/include/sbd_rust.h',
+    'rust-core/src/lib.rs', 'rust-core/src/tests.rs',
+    'rust-launcher/Cargo.toml', 'rust-launcher/README.md', 'rust-launcher/src/lib.rs',
+    'rust-launcher/src/main.rs', 'rust-launcher/src/windows_shell.rs', 'rust-launcher/src/windows_ui.rs',
+    'rust-launcher/tests/launcher.rs',
     'native_patch/test_smart_board_driving_dimension.cpp',
     'tests/test_patch.py',
     'launch_windows.ps1',
@@ -34,14 +40,14 @@ def build(output_dir):
     with ZipFile(target, 'w', ZIP_DEFLATED) as z:
         z.writestr('START_HERE.txt', notice)
         z.write(ROOT / 'README.md', 'README.md')
-        for name in ('ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md'):
+        for name in ('ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md', 'Cargo.toml', 'Cargo.lock'):
             z.write(ROOT / name, name)
         for name in FILES:
             z.write(ROOT / 'native' / name, 'native/' + name)
     with ZipFile(target) as z:
         if z.testzip() is not None:
             raise RuntimeError('Archive integrity check failed')
-        for name in ('ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md'):
+        for name in ('ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md', 'Cargo.toml', 'Cargo.lock'):
             if z.read(name) != (ROOT / name).read_bytes():
                 raise RuntimeError('Archive content mismatch: ' + name)
         for name in FILES:

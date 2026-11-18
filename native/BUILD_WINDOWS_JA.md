@@ -50,6 +50,8 @@ Get-Content ".\KiCad10_NativeDrivingDimension_Source_v1.0.2.zip.sha256"
 
 ### STEP 1：必要なソフトを準備
 
+この手順のコマンド例はSource v1.0.2向けです。Rust移行ブランチではCargoの準備が必要です。[Rust版のビルド手順](RUST_MIGRATION_JA.md)を先に参照してください。
+
 | ソフト | 用途 |
 | --- | --- |
 | 64-bit Windows | 実行環境 |

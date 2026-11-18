@@ -1,0 +1,10 @@
+[package]
+name = "sbd-rust-core"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+description = "Pure Rust expression and geometry engine for KiCad native driving dimensions"
+
+[lib]
+name = "smartboard_dimension_core"
+crate-type = ["rlib", "staticlib"]

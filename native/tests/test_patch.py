@@ -44,6 +44,7 @@ class PatcherTest(unittest.TestCase):
     def test_apply_and_backups(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
+            (base / 'CMakeLists.txt').write_text('project(kicad)\n')
             source_dir = base / 'pcbnew' / 'dialogs'
             source_dir.mkdir(parents=True)
             h = source_dir / 'dialog_dimension_properties.h'
@@ -66,10 +67,15 @@ class PatcherTest(unittest.TestCase):
             self.assertIn('editOnCanvas', selection.read_text())
             self.assertIn('drivingText', selection.read_text())
             self.assertTrue((source_dir / 'smart_board_driving_circle.h').is_file())
+            self.assertTrue((source_dir / 'smartboard-rust-core/src/lib.rs').is_file())
+            self.assertTrue((source_dir / 'smartboard-rust-core/include/sbd_rust.h').is_file())
+            self.assertIn('[workspace]', (source_dir / 'smartboard-rust-core/Cargo.toml').read_text())
+            self.assertIn('smartboard-rust-core/kicad.cmake', (base / 'CMakeLists.txt').read_text())
 
     def test_missing_selection_anchor_leaves_sources_untouched(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
+            (base / 'CMakeLists.txt').write_text('project(kicad)\n')
             directory = base / 'pcbnew/dialogs'
             directory.mkdir(parents=True)
             header = directory / 'dialog_dimension_properties.h'
@@ -90,6 +96,7 @@ class PatcherTest(unittest.TestCase):
     def test_write_failure_restores_all_original_sources(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
+            (base / 'CMakeLists.txt').write_text('project(kicad)\n')
             directory = base / 'pcbnew/dialogs'
             directory.mkdir(parents=True)
             header = directory / 'dialog_dimension_properties.h'
@@ -101,17 +108,22 @@ class PatcherTest(unittest.TestCase):
             selection.write_text(self.selection)
             before = {f: f.read_bytes() for f in (header, source, selection)}
             original_write = Path.write_text
-            def fail_ui_write(path, *args, **kwargs):
-                if path.name == 'smart_board_driving_dimension_ui.h':
+            def fail_rust_write(path, *args, **kwargs):
+                if path.name == 'lib.rs' and 'smartboard-rust-core' in path.parts:
                     raise OSError('simulated write failure')
                 return original_write(path, *args, **kwargs)
-            with patch.object(sys, 'argv', ['patch', str(base)]), patch.object(Path, 'write_text', fail_ui_write):
+            with patch.object(sys, 'argv', ['patch', str(base)]), patch.object(Path, 'write_text', fail_rust_write):
                 with self.assertRaisesRegex(OSError, 'simulated write failure'):
                     main()
             self.assertEqual(before, {f: f.read_bytes() for f in before})
             self.assertFalse((directory / 'smart_board_driving_dimension_impl.h').exists())
             self.assertFalse((directory / 'smart_board_driving_dimension_ui.h').exists())
+            self.assertFalse((directory / 'smartboard-rust-core').exists())
+            self.assertEqual(set(base.rglob('*.smartboard-original')), set())
+            self.assertFalse((directory / 'smartboard-rust-core').exists())
+            self.assertEqual(set(base.rglob('*.smartboard-original')), set())
 
 
 if __name__ == '__main__':
     unittest.main()
+

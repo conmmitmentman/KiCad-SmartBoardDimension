@@ -1,0 +1,35 @@
+name: Rust native engine and launcher
+on:
+  push:
+    branches: [main, codex/rust-native-migration]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rust:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.100.0 --profile minimal
+      - name: Test Rust without starting KiCad
+        run: cargo +1.100.0 test --workspace --all-targets --locked
+      - name: Compile static engine
+        run: cargo +1.100.0 build -p sbd-rust-core --release --locked
+      - name: Test patch generation and source archive
+        if: runner.os == 'Linux'
+        run: |
+          python3 -m unittest discover -s tests -v
+          python3 -m unittest discover -s native/tests -v
+      - name: Check actual C++ adapters against real Rust ABI with artificial board
+        if: runner.os == 'Linux'
+        run: |
+          g++ -std=c++17 -Inative/tests/cpp_stubs native/tests/cpp_bridge_smoke.cpp target/release/libsmartboard_dimension_core.a -ldl -lpthread -lm -o bridge-smoke
+          ./bridge-smoke
+      - name: Build Windows GUI (never run)
+        if: runner.os == 'Windows'
+        run: cargo +1.100.0 build -p smartboard-launcher --locked

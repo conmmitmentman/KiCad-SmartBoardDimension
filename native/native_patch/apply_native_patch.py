@@ -149,6 +149,26 @@ def main():
         if target.exists():
             raise RuntimeError(f'Additional header already exists: {target}')
         outputs[target] = (payload / name).read_text(encoding='utf-8')
+    # Rust is a static library; keep C++ only at KiCad's UI/board transaction boundary.
+    crate = payload.parent / 'rust-core'
+    rust_target = directory / 'smartboard-rust-core'
+    if rust_target.exists():
+        raise RuntimeError(f'Rust payload already exists: {rust_target}')
+    crate_files = [crate / 'Cargo.toml', crate / 'include/sbd_rust.h', *sorted((crate / 'src').rglob('*.rs'))]
+    if len(crate_files) < 3:
+        raise RuntimeError('Rust engine source is incomplete')
+    for path in crate_files:
+        content = path.read_text(encoding='utf-8')
+        if path.name == 'Cargo.toml':
+            # The copy in KiCad builds independently of any surrounding Cargo workspace.
+            content += '\n[workspace]\n'
+        outputs[rust_target / path.relative_to(crate)] = content
+    outputs[rust_target / 'kicad.cmake'] = (payload / 'smart_board_rust.cmake').read_text(encoding='utf-8')
+    root_cmake = args.kicad_source / 'CMakeLists.txt'
+    cmake_text = root_cmake.read_text(encoding='utf-8')
+    if 'smartboard-rust-core/kicad.cmake' in cmake_text:
+        raise RuntimeError('Rust engine already registered in CMake')
+    outputs[root_cmake] = cmake_text + '\n# SMART_BOARD_NATIVE Rust engine\ninclude("${CMAKE_SOURCE_DIR}/pcbnew/dialogs/smartboard-rust-core/kicad.cmake")\n'
     if args.with_tests:
         cmake = args.kicad_source / 'qa/tests/pcbnew/CMakeLists.txt'
         outputs[cmake] = insert_once(cmake.read_text(encoding='utf-8'), '    test_board_commit.cpp', '\n    test_smart_board_driving_dimension.cpp')
@@ -163,18 +183,38 @@ def main():
     for f, original in originals.items():
         if original is not None and f.with_suffix(f.suffix + '.smartboard-original').exists():
             raise RuntimeError(f'Backup already exists for {f}')
+    created_backups = []
+    created_files = []
+    created_dirs = []
     try:
         for f, original in originals.items():
             if original is not None:
-                f.with_suffix(f.suffix + '.smartboard-original').write_bytes(original)
+                backup = f.with_suffix(f.suffix + '.smartboard-original')
+                with backup.open('xb') as stream:
+                    created_backups.append(backup)
+                    stream.write(original)
         for f, text in outputs.items():
+            missing = []
+            parent = f.parent
+            while not parent.exists():
+                missing.append(parent)
+                parent = parent.parent
+            for parent in reversed(missing):
+                parent.mkdir()
+                created_dirs.append(parent)
+            created_files.append(f)
             f.write_text(text, encoding='utf-8', newline='\n')
     except OSError:
-        for f, original in originals.items():
+        for f in reversed(created_files):
+            original = originals[f]
             if original is None:
                 f.unlink(missing_ok=True)
             else:
                 f.write_bytes(original)
+        for directory in reversed(created_dirs):
+            directory.rmdir()
+        for backup in created_backups:
+            backup.unlink()
         raise
     print('Applied native dimension dialog and single-click canvas editing. Originals backed up.')
 
@@ -184,3 +224,4 @@ if __name__ == '__main__':
         main()
     except (RuntimeError, OSError) as e:
         sys.exit(f'Error: {e}')
+
