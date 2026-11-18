@@ -4,3 +4,10 @@ __pycache__/
 このPCの導入結果.txt
 *-release-notes.tmp.md
 release-notes.tmp.md
+/target/
+/dist/
+native/**/target/
+native/**/test-output/
+native/examples/*.kicad_pro
+native/examples/*.kicad_prl
+native/examples/*.lck

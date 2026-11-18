@@ -10,24 +10,13 @@ struct CIRCLE_GEOMETRY
     VECTOR2I center;
     double radius = 0;
 
-    double distance( const VECTOR2I& p ) const
-    {
-        return std::hypot( static_cast<double>( p.x ) - center.x,
-                           static_cast<double>( p.y ) - center.y );
-    }
-
-    double tolerance() const { return std::min( 10000.0, radius / 4.0 ); }
-    bool onCircle( const VECTOR2I& p ) const
-    {
-        return std::abs( distance( p ) - radius ) <= tolerance();
-    }
+    SbdCircle rustGeometry() const { return { rustPoint( center ), radius }; }
 
     VECTOR2I scaledPoint( const VECTOR2I& p, double newRadius ) const
     {
-        if( !onCircle( p ) ) return p;
-        const double scale = newRadius / distance( p );
-        return { static_cast<int>( std::llround( center.x + ( static_cast<double>( p.x ) - center.x ) * scale ) ),
-                 static_cast<int>( std::llround( center.y + ( static_cast<double>( p.y ) - center.y ) * scale ) ) };
+        SbdPoint result = rustPoint( p );
+        sbd_circle_scaled_point( rustGeometry(), rustPoint( p ), newRadius, &result );
+        return nativePoint( result );
     }
 };
 
@@ -43,13 +32,11 @@ inline bool collectCircle( BOARD* board, CIRCLE_GEOMETRY& out, wxString& message
         out.shape = shape;
     }
     if( !out.shape ) return false;
-    out.center = out.shape->GetStart();
-    out.radius = out.distance( out.shape->GetEnd() );
-    const double limit = pcbIUScale.mmToIU( 2000.0 );
-    if( out.radius < pcbIUScale.mmToIU( 0.005 ) || out.radius > pcbIUScale.mmToIU( 1000.0 )
-        || std::abs( static_cast<double>( out.center.x ) ) + out.radius > limit
-        || std::abs( static_cast<double>( out.center.y ) ) + out.radius > limit )
+    SbdCircle geometry{};
+    if( sbd_circle_from_points( rustPoint( out.shape->GetStart() ), rustPoint( out.shape->GetEnd() ), &geometry ) != SBD_OK )
     { message = wxS( "円の直径は0.01～2000 mm、円全体の座標は±2000 mm以内にしてください。" ); return false; }
+    out.center = nativePoint( geometry.center );
+    out.radius = geometry.radius;
     return true;
 }
 
@@ -57,17 +44,9 @@ inline bool collectCircle( BOARD* board, CIRCLE_GEOMETRY& out, wxString& message
 inline int circleDimensionFactor( const CIRCLE_GEOMETRY& circle, const PCB_DIMENSION_BASE* dim )
 {
     if( !dim ) return 0;
-    if( dim->Type() == PCB_DIM_RADIAL_T )
-        return circle.distance( dim->GetStart() ) <= circle.tolerance()
-               && circle.onCircle( dim->GetEnd() ) ? 1 : 0;
-    if( !linearDimension( dim ) || !circle.onCircle( dim->GetStart() )
-        || !circle.onCircle( dim->GetEnd() ) ) return 0;
-    // A chord is not a diameter. Orthogonal dimensions must measure the full diameter.
-    double midpointX = ( static_cast<double>( dim->GetStart().x ) + dim->GetEnd().x ) / 2;
-    double midpointY = ( static_cast<double>( dim->GetStart().y ) + dim->GetEnd().y ) / 2;
-    return std::hypot( midpointX - circle.center.x, midpointY - circle.center.y ) <= circle.tolerance()
-           && std::abs( static_cast<double>( dim->GetMeasuredValue() ) - 2 * circle.radius ) <= circle.tolerance()
-           ? 2 : 0;
+    const int kind = dim->Type() == PCB_DIM_RADIAL_T ? 1 : linearDimension( dim ) ? 2 : 0;
+    return sbd_circle_dimension_factor( circle.rustGeometry(), kind,
+                rustPoint( dim->GetStart() ), rustPoint( dim->GetEnd() ), dim->GetMeasuredValue() );
 }
 
 inline bool resizeCircle( BOARD* board, PCB_DIMENSION_BASE* edited, double targetMM,
@@ -80,10 +59,8 @@ inline bool resizeCircle( BOARD* board, PCB_DIMENSION_BASE* edited, double targe
     const int factor = circleDimensionFactor( circle, edited );
     if( !factor )
     { message = wxS( "半径寸法は中心と円周、直径寸法は円周上の向かい合う2点に合わせてください。" ); return false; }
-    const double newRadius = static_cast<double>( pcbIUScale.mmToIU( targetMM ) ) / factor;
-    const double limit = pcbIUScale.mmToIU( 2000.0 );
-    if( std::abs( static_cast<double>( circle.center.x ) ) + newRadius > limit
-        || std::abs( static_cast<double>( circle.center.y ) ) + newRadius > limit )
+    double newRadius = 0;
+    if( sbd_circle_target_radius( circle.rustGeometry(), factor, targetMM, &newRadius ) != SBD_OK )
     { message = wxS( "変更後の円が座標範囲±2000 mmを超えます。" ); return false; }
     if( circle.shape->IsLocked() || edited->IsLocked() )
     { message = wxS( "円または寸法がロックされています。" ); return false; }
@@ -145,3 +122,4 @@ inline bool canDriveDimension( BOARD* board, PCB_DIMENSION_BASE* dim )
     return collectRectangle( board, rectangle, message ) && dimensionAxis( rectangle, dim ) >= 0;
 }
 } // namespace SMART_BOARD_NATIVE
+

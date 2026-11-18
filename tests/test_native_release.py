@@ -19,12 +19,15 @@ class NativeReleaseTests(unittest.TestCase):
             archive = package.build(Path(td))
             with ZipFile(archive) as z:
                 self.assertIsNone(z.testzip())
-                self.assertEqual(set(z.namelist()), {'START_HERE.txt', 'README.md', 'ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md'}
+                self.assertEqual(set(z.namelist()), {'START_HERE.txt', 'README.md', 'ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md',
+                                                     'Cargo.toml', 'Cargo.lock'}
                                  | {'native/' + name for name in package.FILES})
                 for name in package.FILES:
                     self.assertEqual(z.read('native/' + name), (package.ROOT / 'native' / name).read_bytes())
                 self.assertIn(b'not an installer', z.read('START_HERE.txt'))
-                for required in ('native/setup_windows.ps1', 'native/初回設定.cmd', 'native/windows/build_identity.ps1'):
+                for required in ('native/setup_windows.ps1', 'native/初回設定.cmd', 'native/windows/build_identity.ps1',
+                                 'native/rust-core/src/lib.rs', 'native/rust-launcher/src/windows_ui.rs',
+                                 'native/native_patch/smart_board_rust.cmake'):
                     self.assertIn(required, z.namelist())
             self.assertEqual(archive.with_suffix('.zip.sha256').read_text('ascii'),
                              hashlib.sha256(archive.read_bytes()).hexdigest() + '  ' + archive.name + '\n')
