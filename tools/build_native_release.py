@@ -6,7 +6,7 @@ import argparse
 import hashlib
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.1.0'
+VERSION = '1.1.1'
 TAG = 'native-source-v' + VERSION
 FILES = (
     'README.md', 'README_PROTOTYPE_JA.md', 'INSTALL_JA.md', 'BUILD_WINDOWS_JA.md', 'RUST_MIGRATION_JA.md',

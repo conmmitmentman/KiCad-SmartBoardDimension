@@ -1,10 +1,8 @@
-# PCB上で編集するネイティブ寸法 — Source v1.0.2
+# PCB上で編集するネイティブ寸法
 
-ビルド済みの本体は、[初回設定](INSTALL_JA.md)を一度行うと次回から専用アイコンで起動できます。初回の本体ビルドは [Windowsビルド手順](BUILD_WINDOWS_JA.md) を参照してください。v1.0.2では導入・起動補助を追加し、本体の寸法機能はv1.0.0から変更していません。
+KiCad 10.0.7のPCBエディタに、寸法の数字をクリックして数値・計算式を入力する機能を追加します。寸法の計算とWindowsランチャーはRustで実装し、KiCadの画面・基板・UndoにはC++で接続します。
 
-KiCad 10.0.7 の標準PCBエディタに、寸法の数字をクリックして数値・計算式を入力する機能を追加するC++ソースパッチです。Pythonプラグインのインストーラーとは別のものです。
-
-**KiCad 10.0.7向けの正式なソース配布版です。** Windowsでビルド・起動し、長方形と円の数字クリック、数式入力、Undo/Redoを確認しました。配布ZIPはソースパッチで、コンパイル済みアプリやインストーラーを含みません。既存のSource Preview 1を引き継ぎ、円対応と操作改善を追加しています。
+公開しているソースZIPでPCBエディタとランチャーをビルドし、ビルド先を一度登録します。手順と現行版の検証範囲は [Rust版のガイド](RUST_MIGRATION_JA.md) を参照してください。
 
 ## 実装した操作
 
@@ -37,47 +35,13 @@ KiCad 10.0.7 の標準PCBエディタに、寸法の数字をクリックして�
 - 外形の端点を別の操作で動かした場合、寸法端点を自動追従させる機能はありません。寸法端点を角に合わせ直してから寸法値を編集します。
 - 部品、パッド、配線、ゾーンを移動・変形する機能はありません。
 - ロックされた外形や、変更で動くロック寸法がある場合は変更を拒否します。
-- 外形と寸法を同じ `BOARD_COMMIT` に登録します。長方形と円のUndo/Redoを実画面で確認済みです。
+- 外形と寸法を同じ `BOARD_COMMIT` に登録し、一緒にUndo/Redoできます。
 
-## ソースへの適用
+## 検証記録
 
-対象は公式KiCadのタグ `10.0.7`、コミット `69cafb907ebc09e7722a2a464b1d466fc2e3608d` です。
+現行のRust版は単体テスト、人工基板を使ったC++連携、Windowsランチャーの模擬セットアップ・起動を検証しました。Rust版のKiCad本体ビルドとPCB画面での動作は未確認です。
 
-```powershell
-git clone --depth 1 --branch 10.0.7 https://github.com/KiCad/kicad-source-mirror.git C:\dev\kicad
-python native/native_patch/apply_native_patch.py C:\dev\kicad --with-tests --dry-run
-python native/native_patch/apply_native_patch.py C:\dev\kicad --with-tests
-```
-
-既存ファイルには `.smartboard-original` を付けてバックアップします。挿入位置の不一致、二重適用、既存バックアップがあれば停止します。`--dry-run` はファイルを書き換えません。コンパイル済みのKiCadへこのスクリプトを実行しても機能は追加されません。
-
-ビルドは[KiCad公式Windows MSVC手順](https://dev-docs.kicad.org/en/build/windows-msvc/)に従います。今回の環境はVS 2022、MSVC 14.44.35207、CMake 3.31.10、PowerShell 7.5.4、SWIG 4.3.1、vcpkg `66c0373dc7fca549e5803087b9487edfe3aca0a1` です。QAテストを有効にしてビルドしてください。公式インストール先への上書きは行わず、別のビルドディレクトリで検証しています。
-
-公式の手順で依存ライブラリとMSVC用プリセットを設定後、Developer PowerShellから次を実行します。`VCPKG_ROOT`、SWIG、Visual Studioの場所は自分の環境に合わせてください。
-
-```powershell
-cd C:\dev\kicad
-cmake --preset msvc-win64-release -DKICAD_BUILD_QA_TESTS=ON
-cmake --build --preset win64-release --target pcbnew qa_pcbnew bitmap_archive_build --parallel 4
-$env:BOOST_TEST_RUN_FILTERS = 'SmartBoardDrivingDimensions,SmartBoardDrivingCircles,BoardCommit'
-ctest --preset win64-release -R '^qa_pcbnew$' --output-on-failure
-```
-
-配布ZIPを展開したフォルダーで、同梱の起動スクリプトを使えます。ビルドのDLL/Pythonを読み込み、通常のKiCadと別の設定フォルダーを使います。インストール済みKiCadの実行ファイルは置き換えません。
-
-```powershell
-.\native\launch_windows.ps1 -BuildDirectory C:\dev\kicad\build\msvc-win64-release -Board .\native\examples\circle.kicad_pcb
-```
-
-サンプルは中心(100.3, 100.4) mm、半径28 mm、直径56 mmです。コピーして試してください。テスト実行ファイルを直接起動する場合も、ビルド用DLLの検索パスが必要です。通常は上記のCTestプリセットを使ってください。
-
-## テスト
-
-```powershell
-python -m unittest discover -s native/tests -v
-# KiCadのQAビルド後：
-qa_pcbnew.exe --run_test=SmartBoardDrivingDimensions,SmartBoardDrivingCircles --log_level=test_suite
-```
+以下はRust移行前のC++版の記録です。
 
 - Pythonのパッチ生成テスト：6件成功（適用失敗時の復元を含む）。
 - クリーンな10.0.7から生成した8ファイルをビルド対象へ反映。
@@ -89,7 +53,7 @@ qa_pcbnew.exe --run_test=SmartBoardDrivingDimensions,SmartBoardDrivingCircles --
 - 円を再起動後に編集し、半径28→30 mmへ変更。`1/0`を拒否し、Escで取り消せることと、確定・取消直後も1クリックで入力を再表示できることを確認。
 - 1 mmグリッド上で、グリッドから外れた中心(100.3, 100.4)と円周(120.3, 100.4)に吸着して半径寸法を新規配置。数字から半径25 mmへ変更・保存し、円と寸法が中心(100.3, 100.4)／端点(125.3, 100.4)で一致することを実APIで確認。
 - 最終ビルドで25→24 mmを確定後、キャンバスをクリックし直さずにCtrl+Zで25、Ctrl+Yで24、Ctrl+Sで保存できることを確認。保存データも中心を保ち、円と寸法の端点が(124.3, 100.4)で一致。
-- Windowsの簡単導入と日本語対応の進捗は [導入ガイド](INSTALL_JA.md) を参照してください。開発PCでは専用ショートカット作成とパッケージ内のPCBエディタの日本語表示を確認しています。
+- 開発PCで専用ショートカット作成とパッケージ内のPCBエディタの日本語表示を確認しました。
 - 未検証：他OS・他KiCad版、部品や配線を含む実基板での運用、開発環境のないPCへの導入。コンパイル済みアプリの一般配布は今後の対象です。
 
 ## 来歴とライセンス

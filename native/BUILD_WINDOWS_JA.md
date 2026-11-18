@@ -1,4 +1,7 @@
-# スマート基板寸法（KiCad-SmartBoardDimension）
+# スマート基板寸法（KiCad-SmartBoardDimension） — Source v1.0.2向け
+
+> この手順は旧版の記録です。最新版は [Rust版のビルド・初回登録手順](RUST_MIGRATION_JA.md) を使ってください。
+
 
 **KiCad 10.0.7 の PCB エディタで、寸法の数字をクリックして基板外形を数値・計算式で変更する非公式ネイティブ版**です。KiCad 本体のソースに機能を追加し、ビルドして使用します。
 
