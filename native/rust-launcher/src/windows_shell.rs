@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //! Unicode Windows Known Folders and ShellLink COM; no PowerShell/WSH subprocess.
-use smartboard_launcher::{Result, promote_install, sha256};
+use smartboard_launcher::{LaunchError, Result, promote_install, sha256};
 use std::{fs, os::windows::ffi::OsStrExt, path::{Path, PathBuf}};
 use windows::{
     core::{GUID, Interface, PCWSTR, w},
@@ -25,7 +25,7 @@ fn known_folder(id: &GUID) -> Result<PathBuf> {
         let path = SHGetKnownFolderPath(id, KF_FLAG_DEFAULT, None).map_err(|e| e.to_string())?;
         let value = path.to_string().map(PathBuf::from).map_err(|e| e.to_string());
         CoTaskMemFree(Some(path.0.cast()));
-        value
+        Ok(value?)
     }
 }
 
@@ -56,14 +56,14 @@ pub fn shortcuts(folders: &Folders, executable: &Path, icon: &Path) -> Result<()
         fs::create_dir_all(folder).map_err(|e| e.to_string())?;
         let destination = folder.join("スマート基板寸法（ネイティブ版）.lnk");
         let target = wide(executable);
-        let working = wide(executable.parent().ok_or("起動先のパスが不正です")?);
+        let working = wide(executable.parent().ok_or_else(|| LaunchError::new("Invalid launch path.", "起動先のパスが不正です。"))?);
         let icon = wide(icon);
         let destination = wide(&destination);
         unsafe {
             let link: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER).map_err(|e| e.to_string())?;
             link.SetPath(PCWSTR(target.as_ptr())).map_err(|e| e.to_string())?;
             link.SetWorkingDirectory(PCWSTR(working.as_ptr())).map_err(|e| e.to_string())?;
-            link.SetDescription(w!("PCB寸法を数字から編集するネイティブ版")).map_err(|e| e.to_string())?;
+            link.SetDescription(w!("SmartBoardDimension / スマート基板寸法")).map_err(|e| e.to_string())?;
             link.SetIconLocation(PCWSTR(icon.as_ptr()), 0).map_err(|e| e.to_string())?;
             let file: IPersistFile = link.cast().map_err(|e| e.to_string())?;
             file.Save(PCWSTR(destination.as_ptr()), true).map_err(|e| e.to_string())?;
@@ -84,7 +84,7 @@ pub fn persist_launcher(executable: &Path, folders: &Folders) -> Result<PathBuf>
     let mut destination = fs::OpenOptions::new().write(true).create_new(true).open(&stage).map_err(|e| e.to_string())?;
     std::io::copy(&mut fs::File::open(executable).map_err(|e| e.to_string())?, &mut destination).map_err(|e| e.to_string())?;
     drop(destination);
-    if sha256(&stage)? != digest { return Err("起動用ファイルのコピーを検証できませんでした。".into()); }
+    if sha256(&stage)? != digest { return Err(LaunchError::new("Could not verify the launcher copy.", "起動用ファイルのコピーを検証できませんでした。")); }
     promote_install(&stage, &target)?;
     Ok(target)
 }

@@ -1,7 +1,7 @@
 # Rust Windows launcher
 
 This crate implements installation, manifest verification, native-build registration,
-private KiCad configuration, process launching, a Japanese GUI, and persistent
+private KiCad configuration, process launching, an English and Japanese GUI, and persistent
 Desktop/Start-menu shortcuts in Rust. It does not execute the legacy C# or
 PowerShell implementation.
 
@@ -26,7 +26,8 @@ Failed staging directories are retained for recovery. Settings and edited sample
 live separately and are not replaced during installation or repair.
 
 The launcher uses standard Win32 controls and the Windows file dialog. Windows
-handles font rendering. When the PCB editor starts, the launcher exits.
+handles font rendering. Use the top-right language button to switch. The
+launcher saves the preference separately from the existing KiCad configuration. When the PCB editor starts, the launcher exits.
 The installer checks file contents in 64 KiB chunks. KiCad's Japanese catalogs
 are still required in the packaged editor.
 

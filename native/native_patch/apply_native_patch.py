@@ -63,15 +63,21 @@ def patch_pair(header: str, source: str) -> tuple[str, str]:
         double millimetres = 0.0;
         if( !pushCommit || !SMART_BOARD_NATIVE::parseMillimetres( m_txtValueActual->GetValue(), millimetres ) )
         {
-            wxMessageBox( wxS( "操作中は確定後に編集してください。寸法は0.01～1000 mmの数値・計算式で指定します。" ),
-                          wxS( "駆動寸法" ), wxOK | wxICON_WARNING, this );
+            wxMessageBox( SMART_BOARD_NATIVE::dimensionText(
+                    wxS( "Finish the current edit first. Enter a dimension between 0.01 and 1000 mm as a number or formula." ),
+                    wxS( "操作中は確定後に編集してください。寸法は0.01～1000 mmの数値・計算式で指定します。" ) ),
+                          SMART_BOARD_NATIVE::dimensionText(
+                                  wxS( "Driving dimension" ),
+                                  wxS( "駆動寸法" ) ), wxOK | wxICON_WARNING, this );
             return false;
         }
         wxString error;
         if( !SMART_BOARD_NATIVE::resizeOutline( m_frame->GetBoard(), m_dimension,
                                                    millimetres, commit, error ) )
         {
-            wxMessageBox( error, wxString( L"\u99c6\u52d5\u5bf8\u6cd5" ), wxOK | wxICON_WARNING, this );
+            wxMessageBox( error, SMART_BOARD_NATIVE::dimensionText(
+                    wxS( "Driving dimension" ),
+                    wxS( "駆動寸法" ) ), wxOK | wxICON_WARNING, this );
             return false;
         }
         // Re-enable measured display: the visible dimension matches actual geometry.
@@ -82,8 +88,12 @@ def patch_pair(header: str, source: str) -> tuple[str, str]:
     source = insert_once(source, '    BOARD_COMMIT commit( m_frame );', r'''
     if( m_cbDriveOutline && m_cbDriveOutline->GetValue() && m_dimension->GetEditFlags() != 0 )
     {
-        wxMessageBox( wxS( "寸法の配置・移動を確定してから編集してください。" ),
-                      wxS( "駆動寸法" ), wxOK | wxICON_WARNING, this );
+        wxMessageBox( SMART_BOARD_NATIVE::dimensionText(
+                wxS( "Finish placing or moving the dimension before editing its value." ),
+                wxS( "寸法の配置・移動を確定してから編集してください。" ) ),
+                      SMART_BOARD_NATIVE::dimensionText(
+                              wxS( "Driving dimension" ),
+                              wxS( "駆動寸法" ) ), wxOK | wxICON_WARNING, this );
         return false;
     }
 ''', after=False)

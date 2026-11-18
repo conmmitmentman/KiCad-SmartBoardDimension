@@ -110,6 +110,19 @@ static void rejections_are_read_only()
 
 int main()
 {
+    using SMART_BOARD_NATIVE::dimensionText;
+    for( const auto& language : { wxS( "ja" ), wxS( "ja-JP" ), wxS( "en-US" ), wxS( "fr-FR" ) } )
+    {
+        Pgm().language = language;
+        const bool japanese = language == wxS( "ja" ) || language == wxS( "ja-JP" );
+        require( dimensionText( wxS( "Width" ), wxS( "幅" ) ) == ( japanese ? wxS( "幅" ) : wxS( "Width" ) ),
+                 "dimension text follows the PCB editor language with English fallback" );
+    }
+    Pgm().language = wxS( "" );
+    wxLocale::systemLanguage = wxLANGUAGE_JAPANESE;
+    require( dimensionText( wxS( "Width" ), wxS( "幅" ) ) == wxS( "幅" ), "system default follows Japanese locale" );
+    Pgm().language = wxS( "en" );
+
     parser(); rectangle(); circle(); rejections_are_read_only();
     std::cout << "PASS: real Rust static library + C++ adapter, parser, rectangle/circle resizing, followers, locks and preflight.\n";
 }

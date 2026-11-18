@@ -26,6 +26,9 @@ public:
     wxString() = default;
     wxString( const char* value ) : m_value( value ) {}
     std::size_t size() const { return m_value.size(); }
+    bool IsEmpty() const { return m_value.empty(); }
+    bool operator==( const wxString& other ) const { return m_value == other.m_value; }
+    bool StartsWith( const wxString& prefix ) const { return m_value.rfind( prefix.m_value, 0 ) == 0; }
     Buffer ToUTF8() const { return { m_value }; }
 private:
     std::string m_value;

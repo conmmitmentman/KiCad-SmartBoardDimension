@@ -6,10 +6,10 @@ import argparse
 import hashlib
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.1.1'
+VERSION = '1.2.0'
 TAG = 'native-source-v' + VERSION
 FILES = (
-    'README.md', 'README_PROTOTYPE_JA.md', 'INSTALL_JA.md', 'BUILD_WINDOWS_JA.md', 'RUST_MIGRATION_JA.md',
+    'README.md', 'README_PROTOTYPE_JA.md', 'INSTALL_JA.md', 'BUILD_WINDOWS_JA.md', 'RUST_MIGRATION_JA.md', 'RUST_MIGRATION_EN.md',
     'LICENSE_PYTHON.txt', 'LICENSE_GPLv3.txt',
     'native_patch/apply_native_patch.py',
     'native_patch/smart_board_driving_dimension_impl.h',
@@ -19,6 +19,7 @@ FILES = (
     'rust-core/Cargo.toml', 'rust-core/README.md', 'rust-core/include/sbd_rust.h',
     'rust-core/src/lib.rs', 'rust-core/src/tests.rs',
     'rust-launcher/Cargo.toml', 'rust-launcher/README.md', 'rust-launcher/src/lib.rs',
+    'rust-launcher/src/language.rs',
     'rust-launcher/src/main.rs', 'rust-launcher/src/windows_shell.rs', 'rust-launcher/src/windows_ui.rs',
     'rust-launcher/tests/launcher.rs',
     'native_patch/test_smart_board_driving_dimension.cpp',
@@ -35,19 +36,18 @@ def build(output_dir):
     target = output_dir / f'KiCad10_NativeDrivingDimension_Source_v{VERSION}.zip'
     notice = (f'KiCad 10.0.7 native driving dimensions - SOURCE RELEASE {VERSION}\n\n'
               'This is source code, not an installer or a compiled KiCad application.\n'
-              'Read native/README.md for the current verification status and build instructions.\n'
+              'Start with README.md (Japanese) or README.en.md (English).\n'
               'Applying this patch requires a separate KiCad 10.0.7 source checkout.\n')
     with ZipFile(target, 'w', ZIP_DEFLATED) as z:
         z.writestr('START_HERE.txt', notice)
-        z.write(ROOT / 'README.md', 'README.md')
-        for name in ('ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md', 'Cargo.toml', 'Cargo.lock'):
+        for name in ('README.md', 'README.en.md', 'ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md', 'Cargo.toml', 'Cargo.lock'):
             z.write(ROOT / name, name)
         for name in FILES:
             z.write(ROOT / 'native' / name, 'native/' + name)
     with ZipFile(target) as z:
         if z.testzip() is not None:
             raise RuntimeError('Archive integrity check failed')
-        for name in ('ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md', 'Cargo.toml', 'Cargo.lock'):
+        for name in ('README.md', 'README.en.md', 'ATTRIBUTION.md', 'LICENSE', 'CHANGELOG.md', 'Cargo.toml', 'Cargo.lock'):
             if z.read(name) != (ROOT / name).read_bytes():
                 raise RuntimeError('Archive content mismatch: ' + name)
         for name in FILES:

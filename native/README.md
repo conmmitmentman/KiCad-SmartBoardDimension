@@ -1,5 +1,7 @@
 # PCB上で編集するネイティブ寸法
 
+**日本語** · [English quick start](../README.en.md)
+
 KiCad 10.0.7のPCBエディタに、寸法の数字をクリックして数値・計算式を入力する機能を追加します。寸法の計算とWindowsランチャーはRustで実装し、KiCadの画面・基板・UndoにはC++で接続します。
 
 公開しているソースZIPでPCBエディタとランチャーをビルドし、ビルド先を一度登録します。手順と現行版の検証範囲は [Rust版のガイド](RUST_MIGRATION_JA.md) を参照してください。
