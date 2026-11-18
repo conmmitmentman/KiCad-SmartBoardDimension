@@ -29,14 +29,14 @@ def main():
         '寸法計算とWindowsランチャーをRustで実装しました。'
         '起動画面はWindows標準のコントロールを使い、PCBエディタの起動後に終了します。'
         '本体のビルド手順は同梱のnative/RUST_MIGRATION_JA.mdを参照してください。\n\n'
-        '標準寸法の数字から数値・計算式を入力して、長方形の幅・高さと円の半径・直径を変更するC++実装です。'
-        'Pythonプラグイン版とは別に、KiCad本体をビルドして使用します。\n\n'
+        '標準寸法の数字から数値・計算式を入力すると、長方形の幅・高さと円の半径・直径を変更できます。'
+        'PCBエディタとの接続はC++で実装し、KiCad本体をビルドして使用します。\n\n'
         'Rust単体テストと人工基板を使ったC++連携テストを実施しました。'
         'このRust版を組み込んだKiCad本体のビルドと画面操作は未確認です。\n\n'
         '操作感はSolidCraftを参考にした独自実装です。コードや画像は取り込んでいません。'
         'SolidCraftの公式・提携・推奨製品ではありません。詳細は同梱のATTRIBUTION.mdに記載しています。\n\n'
-        f'対象・制約・導入方法は [native/README.md](https://github.com/{repo}/blob/'
-        f'{os.environ["GITHUB_SHA"]}/native/README.md) を参照してください。\n',
+        f'導入方法は [最初のREADME](https://github.com/{repo}/blob/'
+        f'{os.environ["GITHUB_SHA"]}/README.md) を参照してください。\n',
         encoding='utf-8')
     subprocess.run(['gh', 'release', 'create', tag, str(archive), str(checksum),
                     '--repo', repo, '--target', os.environ['GITHUB_SHA'],

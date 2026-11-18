@@ -12,7 +12,7 @@
 
 Windows x64、Rust 1.88以降（MSVCツールチェーン）、Visual Studio 2022のC++開発環境が必要です。KiCad本体のビルドには別途CMake、Ninja、SWIG、vcpkg等も必要です。KiCadの基準版は10.0.7です。
 
-**Source v1.0.2以前のビルド説明だけでは、このRust版はビルドできません。** 現在のリポジトリ一式を使い、Rustを導入して、次の新しいパッチとCMake連携を使用してください。旧ソースZIPと現在のパッチを混在させないでください。
+[最新版のRelease](https://github.com/conmmitmentman/KiCad-SmartBoardDimension/releases/latest)から `KiCad10_NativeDrivingDimension_Source_v…zip` を取得し、ZIP全体を展開します。このガイドの「リポジトリのルート」は、ZIPから展開した `Cargo.toml` があるフォルダーです。Rustソース、ランチャー、パッチは同じ版のファイルを使ってください。
 
 ## Rust部分をビルドする
 
